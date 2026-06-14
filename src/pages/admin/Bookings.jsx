@@ -176,9 +176,9 @@ export default function Bookings() {
   ].sort((a, b) => a.start.localeCompare(b.start))
 
   const eventColors = {
-    inquiry: { bg: 'rgba(44,74,46,0.15)', color: 'var(--color-primary)' },
-    ical: { bg: 'rgba(0,0,0,0.07)', color: 'var(--color-muted)' },
-    manual: { bg: 'rgba(139,105,20,0.15)', color: '#8B6914' },
+    inquiry: { bg: 'rgba(34,139,34,0.22)', color: '#1a6b1a' },
+    ical: { bg: 'rgba(59,130,246,0.18)', color: '#1d5bbf' },
+    manual: { bg: 'rgba(217,119,6,0.22)', color: '#b45309' },
   }
 
   const displayEnd = selectingEnd && hoverDate ? hoverDate : selEnd
@@ -252,9 +252,9 @@ export default function Bookings() {
               })}
             </div>
             <div style={{ display: 'flex', gap: 20, padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(44,74,46,0.15)', display: 'inline-block' }} /> Website inquiry</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(0,0,0,0.07)', display: 'inline-block' }} /> Platform booking</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(139,105,20,0.15)', display: 'inline-block' }} /> Manual hold</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(34,139,34,0.22)', display: 'inline-block' }} /> Website inquiry</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(59,130,246,0.18)', display: 'inline-block' }} /> Platform booking</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(217,119,6,0.22)', display: 'inline-block' }} /> Manual hold</span>
             </div>
           </div>
 
@@ -323,7 +323,7 @@ export default function Bookings() {
                 {item.email && <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>{item.email}</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 100, background: item.type === 'inquiry' ? 'rgba(44,74,46,0.1)' : item.type === 'manual' ? 'rgba(139,105,20,0.1)' : 'rgba(0,0,0,0.06)', color: item.type === 'inquiry' ? 'var(--color-primary)' : item.type === 'manual' ? '#8B6914' : 'var(--color-muted)', fontWeight: 500 }}>
+                <div style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 100, background: item.type === 'inquiry' ? 'rgba(34,139,34,0.22)' : item.type === 'manual' ? 'rgba(217,119,6,0.22)' : 'rgba(59,130,246,0.18)', color: item.type === 'inquiry' ? '#1a6b1a' : item.type === 'manual' ? '#b45309' : '#1d5bbf', fontWeight: 500 }}>
                   {item.type === 'inquiry' ? (item.status || 'New') : item.type === 'manual' ? 'Hold' : (item.source === 'airbnb' ? 'Airbnb' : 'VRBO')}
                 </div>
                 {item.type === 'manual' && (
