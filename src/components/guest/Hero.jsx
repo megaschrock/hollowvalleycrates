@@ -25,7 +25,7 @@ export default function Hero({ settings }) {
     <section id="hero" style={{ ...heroStyle, position: 'relative', minHeight: '100svh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)' }} />
       <div style={{ position: 'relative', textAlign: 'center', color: '#fff', maxWidth: '700px' }}>
-        <img src="/Logo-White.png" alt="Hollow Valley Crates" style={{ width: 100, height: 100, margin: '0 auto 24px', objectFit: 'contain' }} />
+        <img src="/Logo-White.png" alt="Hollow Valley Crates" style={{ width: 160, height: 160, margin: '0 auto 24px', objectFit: 'contain' }} />
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 300, letterSpacing: '0.06em', marginBottom: 8 }}>HOLLOW VALLEY CRATES</h1>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 40, opacity: 0.85 }}>Private Retreat · Ohio</p>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
