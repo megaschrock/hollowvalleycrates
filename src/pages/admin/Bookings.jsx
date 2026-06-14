@@ -123,7 +123,7 @@ export default function Bookings() {
     }
     for (const block of icalBlocks) {
       if (block.start_date <= dateStr && block.end_date >= dateStr)
-        events.push({ type: 'ical', label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO' })
+        events.push({ type: block.source === 'airbnb' ? 'airbnb' : 'vrbo', label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO' })
     }
     for (const block of blockRows) {
       if (block.start_date <= dateStr && block.end_date >= dateStr)
