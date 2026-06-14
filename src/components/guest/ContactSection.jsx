@@ -18,18 +18,25 @@ export default function ContactSection({ settings }) {
             </a>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {settings.airbnb_url && (
-            <a href={settings.airbnb_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 24px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              View on Airbnb
-            </a>
-          )}
-          {settings.vrbo_url && (
-            <a href={settings.vrbo_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 24px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              View on VRBO
-            </a>
-          )}
-        </div>
+        {(settings.airbnb_url || settings.vrbo_url) && (
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 32 }}>
+            <p style={{ fontSize: '0.85rem', letterSpacing: '0.06em', opacity: 0.7, marginBottom: 20 }}>
+              Prefer to book through a third-party platform?
+            </p>
+            <div style={{ display: 'flex', gap: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {settings.airbnb_url && (
+                <a href={settings.airbnb_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 24px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  View on Airbnb
+                </a>
+              )}
+              {settings.vrbo_url && (
+                <a href={settings.vrbo_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 24px', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  View on VRBO
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

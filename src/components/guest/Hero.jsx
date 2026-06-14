@@ -29,12 +29,6 @@ export default function Hero({ settings }) {
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.5rem, 8vw, 5rem)', fontWeight: 300, letterSpacing: '0.06em', marginBottom: 8 }}>HOLLOW VALLEY CRATES</h1>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 40, opacity: 0.85 }}>Private Retreat · Ohio</p>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {settings?.airbnb_url && (
-            <a href={settings.airbnb_url} target="_blank" rel="noopener noreferrer" style={btnStyle('outline')}>Book on Airbnb</a>
-          )}
-          {settings?.vrbo_url && (
-            <a href={settings.vrbo_url} target="_blank" rel="noopener noreferrer" style={btnStyle('outline')}>Book on VRBO</a>
-          )}
           <a href="#availability" style={btnStyle('solid')}>Book Now</a>
         </div>
       </div>
