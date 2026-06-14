@@ -182,6 +182,9 @@ export default function Pricing() {
         {overrides.map(ovr => (
           <OverrideRow key={ovr.id} ovr={ovr} onDelete={() => deleteOverride(ovr.id)} onSave={rates => updateOverrideRates(ovr.id, rates)} />
         ))}
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: 16 }}>
+          Tip: You can also adjust pricing for a specific date range directly from the <a href="/admin/bookings" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Calendar</a> tab.
+        </p>
       </div>
     </div>
   )

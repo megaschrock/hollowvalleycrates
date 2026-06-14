@@ -7,6 +7,9 @@ function fmtDate(d) {
 }
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAYS = ['sun','mon','tue','wed','thu','fri','sat']
+const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
 const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', background: '#fff', color: 'var(--color-text)' }
 const labelStyle = { display: 'block', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 6, fontWeight: 500 }
 const btnPrimary = { padding: '10px 20px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', border: 'none' }
@@ -21,6 +24,22 @@ export default function Bookings() {
     const d = new Date()
     return { year: d.getFullYear(), month: d.getMonth() }
   })
+
+  // Date selection state
+  const [selStart, setSelStart] = useState(null)
+  const [selEnd, setSelEnd] = useState(null)
+  const [hoverDate, setHoverDate] = useState(null)
+  const [selectingEnd, setSelectingEnd] = useState(false)
+
+  // Action panel
+  const [action, setAction] = useState(null) // 'block' | 'price'
+  const [blockReason, setBlockReason] = useState('')
+  const [priceLabel, setPriceLabel] = useState('')
+  const [priceRates, setPriceRates] = useState({ sun:'', mon:'', tue:'', wed:'', thu:'', fri:'', sat:'' })
+  const [saving, setSaving] = useState(false)
+  const [savedMsg, setSavedMsg] = useState('')
+
+  const today = new Date().toISOString().slice(0, 10)
 
   useEffect(() => {
     supabase.from('inquiries').select('*').not('checkin', 'is', null).not('checkout', 'is', null).order('checkin').then(({ data }) => setInquiries(data || []))
@@ -40,24 +59,82 @@ export default function Bookings() {
     setViewDate(v => v.month === 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: v.month + 1 })
   }
 
+  function handleDateClick(dateStr) {
+    if (!selStart || !selectingEnd) {
+      setSelStart(dateStr)
+      setSelEnd(null)
+      setSelectingEnd(true)
+      setAction(null)
+      setSavedMsg('')
+    } else {
+      if (dateStr <= selStart) {
+        setSelStart(dateStr)
+        setSelEnd(null)
+        return
+      }
+      setSelEnd(dateStr)
+      setSelectingEnd(false)
+      setAction(null)
+      setSavedMsg('')
+      setPriceLabel('')
+      setPriceRates({ sun:'', mon:'', tue:'', wed:'', thu:'', fri:'', sat:'' })
+      setBlockReason('')
+    }
+  }
+
+  function clearSelection() {
+    setSelStart(null); setSelEnd(null); setSelectingEnd(false); setAction(null); setSavedMsg('')
+  }
+
   function getEventsForDate(dateStr) {
     const events = []
     for (const inq of inquiries) {
-      if (inq.checkin <= dateStr && inq.checkout > dateStr) {
+      if (inq.checkin <= dateStr && inq.checkout > dateStr)
         events.push({ type: 'inquiry', label: `${inq.first_name} ${inq.last_name}` })
-      }
     }
     for (const block of icalBlocks) {
-      if (block.start_date <= dateStr && block.end_date >= dateStr) {
+      if (block.start_date <= dateStr && block.end_date >= dateStr)
         events.push({ type: 'ical', label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO' })
-      }
     }
     for (const block of blockRows) {
-      if (block.start_date <= dateStr && block.end_date >= dateStr) {
+      if (block.start_date <= dateStr && block.end_date >= dateStr)
         events.push({ type: 'manual', label: block.reason || 'Hold' })
-      }
     }
     return events
+  }
+
+  function isInSelRange(dateStr) {
+    const end = selectingEnd && hoverDate ? hoverDate : selEnd
+    if (!selStart || !end) return false
+    return dateStr > selStart && dateStr < end
+  }
+
+  async function saveBlock() {
+    if (!selStart || !selEnd) return
+    setSaving(true)
+    const { data } = await supabase.from('blocked_dates').insert([{
+      start_date: selStart, end_date: selEnd,
+      reason: blockReason || 'Manual hold',
+      created_at: new Date().toISOString(),
+    }]).select().single()
+    if (data) setBlockRows(r => [...r, data])
+    setSaving(false)
+    setSavedMsg('Dates blocked successfully.')
+    setAction(null)
+  }
+
+  async function savePriceOverride() {
+    if (!selStart || !selEnd || !priceLabel) return
+    setSaving(true)
+    const payload = {
+      label: priceLabel, start_date: selStart, end_date: selEnd,
+      created_at: new Date().toISOString(),
+    }
+    DAYS.forEach(d => { payload[d] = Number(priceRates[d]) || null })
+    await supabase.from('pricing_overrides').insert([payload])
+    setSaving(false)
+    setSavedMsg('Price override saved.')
+    setAction(null)
   }
 
   async function addBlock() {
@@ -71,7 +148,6 @@ export default function Bookings() {
     setBlockRows(r => r.filter(b => b.id !== id))
   }
 
-  const today = new Date().toISOString().slice(0, 10)
   const upcomingInquiries = inquiries.filter(i => i.checkout >= today)
   const upcomingIcal = icalBlocks.filter(b => b.end_date >= today)
   const upcomingBlocks = blockRows.filter(b => b.end_date >= today)
@@ -87,6 +163,8 @@ export default function Bookings() {
     manual: { bg: 'rgba(139,105,20,0.15)', color: '#8B6914' },
   }
 
+  const displayEnd = selectingEnd && hoverDate ? hoverDate : selEnd
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
@@ -99,42 +177,119 @@ export default function Bookings() {
       </div>
 
       {view === 'calendar' ? (
-        <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
-            <button onClick={prevMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>‹</button>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', letterSpacing: '0.04em' }}>{MONTHS[month]} {year}</span>
-            <button onClick={nextMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>›</button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '12px 8px 4px', borderBottom: '1px solid var(--color-border)' }}>
-            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--color-muted)', paddingBottom: 8 }}>{d}</div>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)' }}>
-            {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', minHeight: 90 }} />)}
-            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
-              const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`
-              const events = getEventsForDate(dateStr)
-              return (
-                <div key={d} style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', minHeight: 90, padding: '6px 8px' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--color-muted)', marginBottom: 4 }}>{d}</div>
-                  {events.map((ev, ei) => (
-                    <div key={ei} style={{
-                      fontSize: '0.7rem', fontWeight: 500, padding: '2px 5px', borderRadius: 3, marginBottom: 2,
-                      ...eventColors[ev.type],
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>{ev.label}</div>
-                  ))}
+        <>
+          <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
+              <button onClick={prevMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>‹</button>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', letterSpacing: '0.04em' }}>{MONTHS[month]} {year}</span>
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-muted)', marginTop: 2 }}>
+                  {!selStart ? 'Click a date to begin a selection' : !selEnd ? 'Now click the end date' : `${fmtDate(selStart)} → ${fmtDate(selEnd)} · Choose an action below`}
                 </div>
-              )
-            })}
+              </div>
+              <button onClick={nextMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>›</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '12px 8px 4px', borderBottom: '1px solid var(--color-border)' }}>
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--color-muted)', paddingBottom: 8 }}>{d}</div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)' }}>
+              {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', minHeight: 80 }} />)}
+              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
+                const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`
+                const events = getEventsForDate(dateStr)
+                const isStart = dateStr === selStart
+                const isEnd = dateStr === selEnd || (selectingEnd && dateStr === hoverDate && hoverDate > selStart)
+                const inRange = isInSelRange(dateStr)
+
+                return (
+                  <div
+                    key={d}
+                    onClick={() => handleDateClick(dateStr)}
+                    onMouseEnter={() => selectingEnd && setHoverDate(dateStr)}
+                    onMouseLeave={() => selectingEnd && setHoverDate(null)}
+                    style={{
+                      borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)',
+                      minHeight: 80, padding: '6px 8px', cursor: 'pointer',
+                      background: isStart || isEnd ? 'var(--color-primary)' : inRange ? 'rgba(44,74,46,0.08)' : '#fff',
+                      transition: 'background 0.1s',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isStart || isEnd ? '#fff' : 'var(--color-text)', marginBottom: 4 }}>{d}</div>
+                    {events.map((ev, ei) => (
+                      <div key={ei} style={{
+                        fontSize: '0.65rem', fontWeight: 500, padding: '1px 4px', borderRadius: 2, marginBottom: 2,
+                        ...(isStart || isEnd ? { bg: 'rgba(255,255,255,0.25)', color: '#fff' } : eventColors[ev.type]),
+                        background: isStart || isEnd ? 'rgba(255,255,255,0.25)' : eventColors[ev.type].bg,
+                        color: isStart || isEnd ? '#fff' : eventColors[ev.type].color,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{ev.label}</div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 20, padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(44,74,46,0.15)', display: 'inline-block' }} /> Website inquiry</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(0,0,0,0.07)', display: 'inline-block' }} /> Platform booking</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(139,105,20,0.15)', display: 'inline-block' }} /> Manual hold</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 20, padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(44,74,46,0.15)', display: 'inline-block' }} /> Website inquiry</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(0,0,0,0.07)', display: 'inline-block' }} /> Platform booking</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(139,105,20,0.15)', display: 'inline-block' }} /> Manual hold</span>
-          </div>
-        </div>
+
+          {/* Action panel */}
+          {selStart && selEnd && (
+            <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '20px 24px', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{fmtDate(selStart)} → {fmtDate(selEnd)}</span>
+                <button onClick={clearSelection} style={{ fontSize: '0.8rem', color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Clear selection ×</button>
+              </div>
+
+              {savedMsg && <p style={{ color: 'var(--color-primary)', fontSize: '0.85rem', marginBottom: 12 }}>{savedMsg}</p>}
+
+              {!action && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button onClick={() => setAction('block')} style={{ ...btnPrimary, background: '#c0392b' }}>Block These Dates</button>
+                  <button onClick={() => setAction('price')} style={{ ...btnPrimary, background: 'var(--color-secondary)', color: 'var(--color-text)' }}>Set Price Override</button>
+                </div>
+              )}
+
+              {action === 'block' && (
+                <div>
+                  <label style={labelStyle}>Reason (optional)</label>
+                  <input style={{ ...inputStyle, maxWidth: 360, marginBottom: 14 }} value={blockReason} onChange={e => setBlockReason(e.target.value)} placeholder="e.g. Personal use, maintenance…" />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={saveBlock} disabled={saving} style={{ ...btnPrimary, background: '#c0392b' }}>{saving ? 'Saving…' : 'Confirm Block'}</button>
+                    <button onClick={() => setAction(null)} style={{ padding: '10px 20px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {action === 'price' && (
+                <div>
+                  <label style={labelStyle}>Override Label</label>
+                  <input style={{ ...inputStyle, maxWidth: 360, marginBottom: 14 }} value={priceLabel} onChange={e => setPriceLabel(e.target.value)} placeholder="e.g. Labor Day Weekend 2026" />
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: 10 }}>Set nightly rates for each day of the week within this range. Leave blank to use base rate.</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 16 }}>
+                    {DAYS.map((d, i) => (
+                      <div key={d}>
+                        <label style={{ ...labelStyle, textAlign: 'center' }}>{DAY_LABELS[i]}</label>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)', fontSize: '0.85rem' }}>$</span>
+                          <input type="number" min="0" style={{ ...inputStyle, paddingLeft: 20, textAlign: 'center' }} value={priceRates[d]} onChange={e => setPriceRates(r => ({ ...r, [d]: e.target.value }))} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={savePriceOverride} disabled={saving || !priceLabel} style={{ ...btnPrimary, opacity: !priceLabel ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save Override'}</button>
+                    <button onClick={() => setAction(null)} style={{ padding: '10px 20px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           {!allUpcoming.length && <p style={{ color: 'var(--color-muted)', textAlign: 'center', padding: 40 }}>No upcoming bookings</p>}
@@ -159,7 +314,7 @@ export default function Bookings() {
         </div>
       )}
 
-      {/* Manual Blocked Dates */}
+      {/* Manual Holds */}
       <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', letterSpacing: '0.03em', marginBottom: 16 }}>Manual Holds</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: '0.875rem' }}>
