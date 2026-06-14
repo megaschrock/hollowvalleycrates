@@ -210,6 +210,16 @@ export default function Bookings() {
 
       {view === 'calendar' ? (
         <>
+          <style>{`
+            .admin-cal-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .admin-cal-grid { min-width: 560px; }
+            @media (max-width: 600px) {
+              .admin-cal-cell { min-height: 54px !important; padding: 3px 4px !important; }
+              .admin-cal-cell-label { font-size: 0.7rem !important; }
+              .admin-cal-cell-rate { display: none !important; }
+              .admin-cal-cell-event { font-size: 0.55rem !important; }
+            }
+          `}</style>
           <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
               <button onClick={prevMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>‹</button>
@@ -221,13 +231,15 @@ export default function Bookings() {
               </div>
               <button onClick={nextMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>›</button>
             </div>
+            <div className="admin-cal-wrap">
+            <div className="admin-cal-grid">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '12px 8px 4px', borderBottom: '1px solid var(--color-border)' }}>
               {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
                 <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--color-muted)', paddingBottom: 8 }}>{d}</div>
               ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)' }}>
-              {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', minHeight: 80 }} />)}
+              {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} className="admin-cal-cell" style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', minHeight: 80 }} />)}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
                 const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`
                 const events = getEventsForDate(dateStr)
@@ -239,6 +251,7 @@ export default function Bookings() {
                 return (
                   <div
                     key={d}
+                    className="admin-cal-cell"
                     onClick={() => handleDateClick(dateStr)}
                     onMouseEnter={() => selectingEnd && setHoverDate(dateStr)}
                     onMouseLeave={() => selectingEnd && setHoverDate(null)}
@@ -250,11 +263,11 @@ export default function Bookings() {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isStart || isEnd ? '#fff' : 'var(--color-text)' }}>{d}</span>
-                      {rate && <span style={{ fontSize: '0.65rem', color: isStart || isEnd ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
+                      <span className="admin-cal-cell-label" style={{ fontSize: '0.8rem', fontWeight: 600, color: isStart || isEnd ? '#fff' : 'var(--color-text)' }}>{d}</span>
+                      {rate && <span className="admin-cal-cell-rate" style={{ fontSize: '0.65rem', color: isStart || isEnd ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
                     </div>
                     {events.map((ev, ei) => (
-                      <div key={ei} style={{
+                      <div key={ei} className="admin-cal-cell-event" style={{
                         fontSize: '0.65rem', fontWeight: 500, padding: '1px 4px', borderRadius: 2, marginBottom: 2,
                         background: isStart || isEnd ? 'rgba(255,255,255,0.25)' : eventColors[ev.type].bg,
                         color: isStart || isEnd ? '#fff' : eventColors[ev.type].color,
@@ -265,6 +278,8 @@ export default function Bookings() {
                 )
               })}
             </div>
+            </div>{/* admin-cal-grid */}
+            </div>{/* admin-cal-wrap */}
             <div style={{ display: 'flex', gap: 20, padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(234,179,8,0.22)', display: 'inline-block' }} /> Inquiry</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(34,139,34,0.22)', display: 'inline-block' }} /> Website booking</span>

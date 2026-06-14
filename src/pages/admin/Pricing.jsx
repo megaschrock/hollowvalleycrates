@@ -32,23 +32,31 @@ const btnPrimary = {
 
 function DayRateGrid({ rates, onChange }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
-      {DAYS.map(d => (
-        <div key={d.key}>
-          <label style={{ ...labelStyle, textAlign: 'center' }}>{d.label.slice(0, 3)}</label>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)', fontSize: '0.85rem' }}>$</span>
-            <input
-              type="number"
-              min="0"
-              style={{ ...inputStyle, paddingLeft: 20 }}
-              value={rates[d.key] ?? ''}
-              onChange={e => onChange({ ...rates, [d.key]: e.target.value })}
-            />
+    <>
+      <style>{`
+        .day-rate-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+        @media (max-width: 600px) {
+          .day-rate-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+      `}</style>
+      <div className="day-rate-grid">
+        {DAYS.map(d => (
+          <div key={d.key}>
+            <label style={{ ...labelStyle, textAlign: 'center' }}>{d.label.slice(0, 3)}</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)', fontSize: '0.85rem' }}>$</span>
+              <input
+                type="number"
+                min="0"
+                style={{ ...inputStyle, paddingLeft: 18, fontSize: '0.85rem' }}
+                value={rates[d.key] ?? ''}
+                onChange={e => onChange({ ...rates, [d.key]: e.target.value })}
+              />
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </>
   )
 }
 
