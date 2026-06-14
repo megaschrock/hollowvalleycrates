@@ -1,26 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  { realtime: { enabled: false }, global: { fetch } }
-)
-
 export default async function handler(req, context) {
   try {
-    const { data: blocks, error } = await supabase
-      .from('blocked_dates')
-      .select('id, start_date, end_date, reason')
+    const supabaseUrl = process.env.VITE_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY
 
-    if (error) throw error
+    const res = await fetch(`${supabaseUrl}/rest/v1/blocked_dates?select=id,start_date,end_date,reason`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+    })
 
+    const blocks = await res.json()
     const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
 
     const events = (blocks || []).map(b => {
       const uid = `hvc-${b.id}@hollowvalleycrates.com`
       const dtstart = b.start_date.replace(/-/g, '')
-      // iCal DTEND for all-day events is exclusive (day after last night)
-      const endDate = new Date(b.end_date)
+      const endDate = new Date(b.end_date + 'T12:00:00')
       endDate.setDate(endDate.getDate() + 1)
       const dtend = endDate.toISOString().slice(0, 10).replace(/-/g, '')
       const summary = b.reason || 'Blocked'
@@ -60,7 +56,7 @@ export default async function handler(req, context) {
       },
     })
   } catch (err) {
-    return new Response(`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Hollow Valley Crates//EN\r\nEND:VCALENDAR`, {
+    return new Response('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Hollow Valley Crates//EN\r\nEND:VCALENDAR', {
       status: 200,
       headers: { 'Content-Type': 'text/calendar; charset=utf-8' },
     })

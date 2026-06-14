@@ -1,11 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  { realtime: { enabled: false }, global: { fetch } }
-)
-
 function parseIcal(text) {
   const events = []
   const lines = text.replace(/\r\n /g, '').replace(/\r\n/g, '\n').split('\n')
@@ -33,7 +25,16 @@ function parseIcal(text) {
 
 export default async function handler(req, context) {
   try {
-    const { data: settings } = await supabase.from('settings').select('airbnb_ical_url,vrbo_ical_url').eq('id', 1).single()
+    const supabaseUrl = process.env.VITE_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY
+    const headers = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+    }
+
+    const settingsRes = await fetch(`${supabaseUrl}/rest/v1/settings?id=eq.1&select=airbnb_ical_url,vrbo_ical_url`, { headers })
+    const [settings] = await settingsRes.json()
     if (!settings) return new Response('No settings', { status: 500 })
 
     const sources = [
@@ -47,16 +48,31 @@ export default async function handler(req, context) {
         if (!res.ok) continue
         const text = await res.text()
         const events = parseIcal(text)
-        await supabase.from('cached_ical_blocks').delete().eq('source', source.key)
+
+        await fetch(`${supabaseUrl}/rest/v1/cached_ical_blocks?source=eq.${source.key}`, { method: 'DELETE', headers })
+
         if (events.length) {
-          await supabase.from('cached_ical_blocks').insert(
-            events.map(e => ({ source: source.key, start_date: e.start, end_date: e.end, summary: e.summary || '', last_synced: new Date().toISOString() }))
-          )
+          await fetch(`${supabaseUrl}/rest/v1/cached_ical_blocks`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(events.map(e => ({
+              source: source.key,
+              start_date: e.start,
+              end_date: e.end,
+              summary: e.summary || '',
+              last_synced: new Date().toISOString(),
+            }))),
+          })
         }
       } catch {}
     }
 
-    await supabase.from('settings').update({ last_ical_refresh: new Date().toISOString() }).eq('id', 1)
+    await fetch(`${supabaseUrl}/rest/v1/settings?id=eq.1`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ last_ical_refresh: new Date().toISOString() }),
+    })
+
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500 })
