@@ -99,7 +99,6 @@ export default function Bookings() {
                       fontSize: '0.7rem', fontWeight: 500, padding: '2px 5px', borderRadius: 3, marginBottom: 2,
                       background: ev.type === 'inquiry' ? 'rgba(44,74,46,0.15)' : 'rgba(0,0,0,0.07)',
                       color: ev.type === 'inquiry' ? 'var(--color-primary)' : 'var(--color-muted)',
-                      textDecoration: ev.type === 'ical' ? 'line-through' : 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>{ev.label}</div>
                   ))}
@@ -119,7 +118,7 @@ export default function Bookings() {
             <div key={i} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.type === 'inquiry' ? 'var(--color-primary)' : 'var(--color-muted)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem', textDecoration: item.type === 'ical' ? 'line-through' : 'none', color: item.type === 'ical' ? 'var(--color-muted)' : 'var(--color-text)' }}>{item.label}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: item.type === 'ical' ? 'var(--color-muted)' : 'var(--color-text)' }}>{item.label}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>{item.sub}</div>
                 {item.email && <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>{item.email}</div>}
               </div>
