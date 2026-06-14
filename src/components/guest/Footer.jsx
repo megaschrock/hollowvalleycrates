@@ -2,7 +2,7 @@ export default function Footer({ settings }) {
   const year = new Date().getFullYear()
   return (
     <footer style={{ background: 'var(--color-text)', color: 'rgba(255,255,255,0.6)', padding: '40px 24px', textAlign: 'center' }}>
-      <img src="/logo.png" alt="Hollow Valley Crates" style={{ width: 48, height: 48, margin: '0 auto 16px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+      <img src="/logo.png" alt="Hollow Valley Crates" style={{ width: 120, height: 120, margin: '0 auto 16px', objectFit: 'contain', opacity: 0.7 }} />
       <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.85)', marginBottom: 16 }}>HOLLOW VALLEY CRATES</p>
       <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
         {[['#hero','Home'],['#gallery','Gallery'],['#description','Property'],['#pricing','Pricing'],['#availability','Availability'],['#inquiry','Book'],['#contact','Contact']].map(([href, label]) => (
