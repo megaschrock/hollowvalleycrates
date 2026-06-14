@@ -4,14 +4,14 @@ import { supabase } from '../../lib/supabase'
 
 const navItems = [
   { to: '/admin/dashboard', label: 'Dashboard' },
-  { to: '/admin/content', label: 'Content' },
-  { to: '/admin/pricing', label: 'Pricing' },
-  { to: '/admin/calendar', label: 'Connections' },
-  { to: '/admin/bookings', label: 'Calendar' },
   { to: '/admin/inquiries', label: 'Inquiries' },
+  { to: '/admin/bookings', label: 'Calendar' },
+  { to: '/admin/pricing', label: 'Standard Rates' },
+  { to: '/admin/stats', label: 'Stats' },
+  { to: '/admin/content', label: 'Content' },
   { to: '/admin/photos', label: 'Photos' },
   { to: '/admin/giveaway', label: 'Giveaway' },
-  { to: '/admin/stats', label: 'Stats' },
+  { to: '/admin/calendar', label: 'Connections' },
 ]
 
 export default function AdminLayout() {

@@ -55,7 +55,7 @@ function DayRateGrid({ rates, onChange }) {
 export default function Pricing() {
   const [baseRates, setBaseRates] = useState({ sun: '', mon: '', tue: '', wed: '', thu: '', fri: '', sat: '' })
   const [overrides, setOverrides] = useState([])
-  const [newOverride, setNewOverride] = useState({ label: '', start_date: '', end_date: '', sun: '', mon: '', tue: '', wed: '', thu: '', fri: '', sat: '' })
+  const [newOverride, setNewOverride] = useState({ label: '', start_date: '', end_date: '', repeat_yearly: false, sun: '', mon: '', tue: '', wed: '', thu: '', fri: '', sat: '' })
   const [savingBase, setSavingBase] = useState(false)
   const [savedBase, setSavedBase] = useState(false)
   const [addingOverride, setAddingOverride] = useState(false)
@@ -91,7 +91,10 @@ export default function Pricing() {
     if (!newOverride.start_date || !newOverride.end_date || !newOverride.label) return
     setAddingOverride(true)
     const { data } = await supabase.from('pricing_overrides').insert([{
-      ...newOverride,
+      label: newOverride.label,
+      start_date: newOverride.start_date,
+      end_date: newOverride.end_date,
+      repeat_yearly: newOverride.repeat_yearly || false,
       sun: Number(newOverride.sun) || null,
       mon: Number(newOverride.mon) || null,
       tue: Number(newOverride.tue) || null,
@@ -103,7 +106,7 @@ export default function Pricing() {
     }]).select().single()
     if (data) {
       setOverrides(o => [...o, data])
-      setNewOverride({ label: '', start_date: '', end_date: '', sun: '', mon: '', tue: '', wed: '', thu: '', fri: '', sat: '' })
+      setNewOverride({ label: '', start_date: '', end_date: '', repeat_yearly: false, sun: '', mon: '', tue: '', wed: '', thu: '', fri: '', sat: '' })
       setShowAddForm(false)
     }
     setAddingOverride(false)
@@ -114,8 +117,8 @@ export default function Pricing() {
     setOverrides(o => o.filter(x => x.id !== id))
   }
 
-  async function updateOverrideRates(id, rates) {
-    const updates = {}
+  async function updateOverrideRates(id, rates, repeatYearly) {
+    const updates = { repeat_yearly: repeatYearly }
     DAYS.forEach(d => { updates[d.key] = Number(rates[d.key]) || null })
     await supabase.from('pricing_overrides').update(updates).eq('id', id)
     setOverrides(o => o.map(x => x.id === id ? { ...x, ...updates } : x))
@@ -123,7 +126,7 @@ export default function Pricing() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 8 }}>Pricing</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 8 }}>Standard Rates</h1>
       <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', marginBottom: 32 }}>
         Set base rates by day of week. Add date range overrides for holidays or slow periods — override rates take priority over base rates for those dates.
       </p>
@@ -153,9 +156,9 @@ export default function Pricing() {
         {/* Add form */}
         {showAddForm && (
           <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: 20, marginBottom: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
-                <label style={labelStyle}>Label (e.g. "Memorial Day 2026")</label>
+                <label style={labelStyle}>Label (e.g. "Memorial Day")</label>
                 <input style={{ ...inputStyle, textAlign: 'left' }} value={newOverride.label} onChange={e => setNewOverride(o => ({ ...o, label: e.target.value }))} placeholder="Holiday name…" />
               </div>
               <div>
@@ -167,6 +170,11 @@ export default function Pricing() {
                 <input type="date" style={inputStyle} value={newOverride.end_date} onChange={e => setNewOverride(o => ({ ...o, end_date: e.target.value }))} />
               </div>
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
+              <input type="checkbox" checked={newOverride.repeat_yearly} onChange={e => setNewOverride(o => ({ ...o, repeat_yearly: e.target.checked }))} style={{ width: 15, height: 15, accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>Repeat every year</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>(same month/day range, auto-applies in future years)</span>
+            </label>
             <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: 12 }}>Set rates for each day within this range. Leave blank to fall back to base rate for that day.</p>
             <DayRateGrid rates={newOverride} onChange={r => setNewOverride(o => ({ ...o, ...r }))} />
             <button onClick={addOverride} disabled={addingOverride} style={{ ...btnPrimary, marginTop: 16 }}>
@@ -193,12 +201,13 @@ export default function Pricing() {
 function OverrideRow({ ovr, onDelete, onSave }) {
   const [expanded, setExpanded] = useState(false)
   const [rates, setRates] = useState({ sun: ovr.sun ?? '', mon: ovr.mon ?? '', tue: ovr.tue ?? '', wed: ovr.wed ?? '', thu: ovr.thu ?? '', fri: ovr.fri ?? '', sat: ovr.sat ?? '' })
+  const [repeatYearly, setRepeatYearly] = useState(ovr.repeat_yearly || false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   async function save() {
     setSaving(true)
-    await onSave(rates)
+    await onSave(rates, repeatYearly)
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -206,9 +215,10 @@ function OverrideRow({ ovr, onDelete, onSave }) {
   return (
     <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', marginBottom: 10, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', background: expanded ? 'rgba(44,74,46,0.04)' : '#fff' }} onClick={() => setExpanded(e => !e)}>
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{ovr.label}</span>
-          <span style={{ color: 'var(--color-muted)', fontSize: '0.8rem', marginLeft: 12 }}>{ovr.start_date} → {ovr.end_date}</span>
+          <span style={{ color: 'var(--color-muted)', fontSize: '0.8rem' }}>{ovr.start_date} → {ovr.end_date}</span>
+          {ovr.repeat_yearly && <span style={{ fontSize: '0.7rem', background: 'rgba(44,74,46,0.1)', color: 'var(--color-primary)', padding: '2px 7px', borderRadius: 100, fontWeight: 500 }}>Repeats yearly</span>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={e => { e.stopPropagation(); onDelete() }} style={{ fontSize: '0.75rem', color: '#c0392b', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
@@ -219,6 +229,10 @@ function OverrideRow({ ovr, onDelete, onSave }) {
         <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', background: '#fff' }}>
           <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: 12 }}>Leave blank to use base rate for that day.</p>
           <DayRateGrid rates={rates} onChange={setRates} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
+            <input type="checkbox" checked={repeatYearly} onChange={e => setRepeatYearly(e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>Repeat every year</span>
+          </label>
           <button onClick={save} disabled={saving} style={{ ...btnPrimary, marginTop: 14, fontSize: '0.8rem', padding: '8px 18px' }}>
             {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Rates'}
           </button>

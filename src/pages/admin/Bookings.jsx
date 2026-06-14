@@ -56,8 +56,17 @@ export default function Bookings() {
   function getRateForDate(dateStr) {
     const dow = new Date(dateStr + 'T12:00:00').getDay()
     const keys = ['sun','mon','tue','wed','thu','fri','sat']
+    const [year, month, day] = dateStr.split('-')
     for (const ovr of priceOverrides) {
-      if (dateStr >= ovr.start_date && dateStr <= ovr.end_date) {
+      let matches = dateStr >= ovr.start_date && dateStr <= ovr.end_date
+      if (!matches && ovr.repeat_yearly) {
+        const [sy, sm, sd] = ovr.start_date.split('-')
+        const [ey, em, ed] = ovr.end_date.split('-')
+        const thisStart = `${year}-${sm}-${sd}`
+        const thisEnd = sm === em ? `${year}-${em}-${ed}` : `${Number(year) + (em < sm ? 1 : 0)}-${em}-${ed}`
+        matches = dateStr >= thisStart && dateStr <= thisEnd
+      }
+      if (matches) {
         const val = ovr[keys[dow]]
         if (val != null) return Number(val)
       }
