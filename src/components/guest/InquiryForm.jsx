@@ -116,7 +116,7 @@ export default function InquiryForm({ checkin, checkout }) {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            {[['adults','Adults',1],['children','Children',0],['pets','Pets',0]].map(([field, label, min]) => (
+            {[['adults','Adults',1],['children','Children',0],['pets','Pets · 1 small dog max',0]].map(([field, label, min]) => (
               <div key={field}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" min={min} style={inputStyle} value={form[field]} onChange={e => set(field, e.target.value)} />
