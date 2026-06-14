@@ -7,16 +7,13 @@ export default async function handler(req, context) {
     const body = await req.json()
     const { first_name, last_name, email, checkin, checkout, adults, children, pets } = body
 
-    const accountSid = process.env.TWILIO_ACCOUNT_SID
-    const authToken = process.env.TWILIO_AUTH_TOKEN
-    const fromNumber = process.env.TWILIO_FROM_NUMBER
-    const ownerPhones = (process.env.OWNER_PHONES || '').split(',').map(p => p.trim()).filter(Boolean)
+    const token = process.env.PUSHOVER_TOKEN
+    const user = process.env.PUSHOVER_USER_KEY
 
-    if (!accountSid || !authToken || !fromNumber || !ownerPhones.length) {
-      return new Response(JSON.stringify({ ok: false, error: 'Twilio not configured' }), { status: 200 })
+    if (!token || !user) {
+      return new Response(JSON.stringify({ ok: false, error: 'Pushover not configured' }), { status: 200 })
     }
 
-    const guestLine = `${first_name} ${last_name}`
     const datesLine = checkin && checkout ? `${checkin} → ${checkout}` : 'Dates TBD'
     const guestsLine = [
       adults ? `${adults} adult${adults > 1 ? 's' : ''}` : null,
@@ -24,22 +21,21 @@ export default async function handler(req, context) {
       pets ? `${pets} pet${pets > 1 ? 's' : ''}` : null,
     ].filter(Boolean).join(', ')
 
-    const message = `New inquiry — Hollow Valley Crates\n${guestLine}\n${datesLine}\n${guestsLine}\nEmail: ${email}\nCheck admin to respond.`
+    const message = `${first_name} ${last_name}\n${datesLine}\n${guestsLine}\nEmail: ${email}`
 
-    const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+    const res = await fetch('https://api.pushover.net/1/messages.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        user,
+        title: 'New Inquiry — Hollow Valley Crates',
+        message,
+      }),
+    })
 
-    const results = await Promise.all(ownerPhones.map(to =>
-      fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${credentials}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({ From: fromNumber, To: to, Body: message }).toString(),
-      }).then(r => r.json())
-    ))
-
-    return new Response(JSON.stringify({ ok: true, results }), {
+    const result = await res.json()
+    return new Response(JSON.stringify({ ok: result.status === 1, result }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
