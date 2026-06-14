@@ -6,7 +6,7 @@ const labelStyle = { display: 'block', fontSize: '0.75rem', letterSpacing: '0.08
 const sectionStyle = { background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: 24 }
 const btnPrimary = { padding: '10px 20px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', border: 'none' }
 
-const FEED_URL = `${window.location.origin}/.netlify/functions/calendar-feed`
+const FEED_URL = `${window.location.origin}/calendar.ics`
 
 export default function Calendar() {
   const [icalUrls, setIcalUrls] = useState({ airbnb_ical_url:'', vrbo_ical_url:'' })
