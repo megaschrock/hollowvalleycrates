@@ -6,17 +6,17 @@ function fmtDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function fmtShort(d) {
-  if (!d) return ''
-  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', background: '#fff', color: 'var(--color-text)' }
+const labelStyle = { display: 'block', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 6, fontWeight: 500 }
+const btnPrimary = { padding: '10px 20px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', border: 'none' }
 
 export default function Bookings() {
   const [view, setView] = useState('calendar')
   const [inquiries, setInquiries] = useState([])
   const [icalBlocks, setIcalBlocks] = useState([])
+  const [blockRows, setBlockRows] = useState([])
+  const [newBlock, setNewBlock] = useState({ start_date:'', end_date:'', reason:'' })
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date()
     return { year: d.getFullYear(), month: d.getMonth() }
@@ -25,6 +25,7 @@ export default function Bookings() {
   useEffect(() => {
     supabase.from('inquiries').select('*').not('checkin', 'is', null).not('checkout', 'is', null).order('checkin').then(({ data }) => setInquiries(data || []))
     supabase.from('cached_ical_blocks').select('*').order('start_date').then(({ data }) => setIcalBlocks(data || []))
+    supabase.from('blocked_dates').select('*').order('start_date').then(({ data }) => setBlockRows(data || []))
   }, [])
 
   const { year, month } = viewDate
@@ -43,30 +44,53 @@ export default function Bookings() {
     const events = []
     for (const inq of inquiries) {
       if (inq.checkin <= dateStr && inq.checkout > dateStr) {
-        events.push({ type: 'inquiry', label: `${inq.first_name} ${inq.last_name}`, inq })
+        events.push({ type: 'inquiry', label: `${inq.first_name} ${inq.last_name}` })
       }
     }
     for (const block of icalBlocks) {
       if (block.start_date <= dateStr && block.end_date >= dateStr) {
-        events.push({ type: 'ical', label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO', source: block.source })
+        events.push({ type: 'ical', label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO' })
+      }
+    }
+    for (const block of blockRows) {
+      if (block.start_date <= dateStr && block.end_date >= dateStr) {
+        events.push({ type: 'manual', label: block.reason || 'Hold' })
       }
     }
     return events
   }
 
-  // List view: upcoming only
+  async function addBlock() {
+    if (!newBlock.start_date || !newBlock.end_date) return
+    const { data } = await supabase.from('blocked_dates').insert([{ ...newBlock, created_at: new Date().toISOString() }]).select().single()
+    if (data) { setBlockRows(r => [...r, data]); setNewBlock({ start_date:'', end_date:'', reason:'' }) }
+  }
+
+  async function deleteBlock(id) {
+    await supabase.from('blocked_dates').delete().eq('id', id)
+    setBlockRows(r => r.filter(b => b.id !== id))
+  }
+
   const today = new Date().toISOString().slice(0, 10)
   const upcomingInquiries = inquiries.filter(i => i.checkout >= today)
   const upcomingIcal = icalBlocks.filter(b => b.end_date >= today)
+  const upcomingBlocks = blockRows.filter(b => b.end_date >= today)
   const allUpcoming = [
     ...upcomingInquiries.map(i => ({ type: 'inquiry', start: i.checkin, end: i.checkout, label: `${i.first_name} ${i.last_name}`, sub: `${fmtDate(i.checkin)} → ${fmtDate(i.checkout)}`, status: i.status, email: i.email })),
     ...upcomingIcal.map(b => ({ type: 'ical', start: b.start_date, end: b.end_date, label: b.source === 'airbnb' ? 'Airbnb Booking' : 'VRBO Booking', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, source: b.source })),
+    ...upcomingBlocks.map(b => ({ type: 'manual', start: b.start_date, end: b.end_date, label: b.reason || 'Hold', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, id: b.id })),
   ].sort((a, b) => a.start.localeCompare(b.start))
+
+  const eventColors = {
+    inquiry: { bg: 'rgba(44,74,46,0.15)', color: 'var(--color-primary)' },
+    ical: { bg: 'rgba(0,0,0,0.07)', color: 'var(--color-muted)' },
+    manual: { bg: 'rgba(139,105,20,0.15)', color: '#8B6914' },
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em' }}>Bookings</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em' }}>Calendar</h1>
         <div style={{ display: 'flex', gap: 0, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
           {['calendar', 'list'].map(v => (
             <button key={v} onClick={() => setView(v)} style={{ padding: '8px 20px', background: view === v ? 'var(--color-primary)' : 'var(--color-card)', color: view === v ? '#fff' : 'var(--color-text)', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, textTransform: 'capitalize' }}>{v}</button>
@@ -75,7 +99,7 @@ export default function Bookings() {
       </div>
 
       {view === 'calendar' ? (
-        <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+        <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
             <button onClick={prevMonth} style={{ color: 'var(--color-primary)', fontSize: 20, padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}>‹</button>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', letterSpacing: '0.04em' }}>{MONTHS[month]} {year}</span>
@@ -97,8 +121,7 @@ export default function Bookings() {
                   {events.map((ev, ei) => (
                     <div key={ei} style={{
                       fontSize: '0.7rem', fontWeight: 500, padding: '2px 5px', borderRadius: 3, marginBottom: 2,
-                      background: ev.type === 'inquiry' ? 'rgba(44,74,46,0.15)' : 'rgba(0,0,0,0.07)',
-                      color: ev.type === 'inquiry' ? 'var(--color-primary)' : 'var(--color-muted)',
+                      ...eventColors[ev.type],
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>{ev.label}</div>
                   ))}
@@ -108,27 +131,74 @@ export default function Bookings() {
           </div>
           <div style={{ display: 'flex', gap: 20, padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(44,74,46,0.15)', display: 'inline-block' }} /> Website inquiry</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(0,0,0,0.07)', display: 'inline-block' }} /> Platform booking (Airbnb/VRBO)</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(0,0,0,0.07)', display: 'inline-block' }} /> Platform booking</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(139,105,20,0.15)', display: 'inline-block' }} /> Manual hold</span>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           {!allUpcoming.length && <p style={{ color: 'var(--color-muted)', textAlign: 'center', padding: 40 }}>No upcoming bookings</p>}
           {allUpcoming.map((item, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.type === 'inquiry' ? 'var(--color-primary)' : 'var(--color-muted)', flexShrink: 0 }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.type === 'inquiry' ? 'var(--color-primary)' : item.type === 'manual' ? '#8B6914' : 'var(--color-muted)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: '0.95rem', color: item.type === 'ical' ? 'var(--color-muted)' : 'var(--color-text)' }}>{item.label}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>{item.sub}</div>
                 {item.email && <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>{item.email}</div>}
               </div>
-              <div style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 100, background: item.type === 'inquiry' ? 'rgba(44,74,46,0.1)' : 'rgba(0,0,0,0.06)', color: item.type === 'inquiry' ? 'var(--color-primary)' : 'var(--color-muted)', fontWeight: 500 }}>
-                {item.type === 'inquiry' ? (item.status || 'New') : (item.source === 'airbnb' ? 'Airbnb' : 'VRBO')}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 100, background: item.type === 'inquiry' ? 'rgba(44,74,46,0.1)' : item.type === 'manual' ? 'rgba(139,105,20,0.1)' : 'rgba(0,0,0,0.06)', color: item.type === 'inquiry' ? 'var(--color-primary)' : item.type === 'manual' ? '#8B6914' : 'var(--color-muted)', fontWeight: 500 }}>
+                  {item.type === 'inquiry' ? (item.status || 'New') : item.type === 'manual' ? 'Hold' : (item.source === 'airbnb' ? 'Airbnb' : 'VRBO')}
+                </div>
+                {item.type === 'manual' && (
+                  <button onClick={() => deleteBlock(item.id)} style={{ fontSize: '0.75rem', color: '#c0392b', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Manual Blocked Dates */}
+      <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', letterSpacing: '0.03em', marginBottom: 16 }}>Manual Holds</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: '0.875rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              {['Start','End','Reason',''].map(h => <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {blockRows.map(b => (
+              <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <td style={{ padding: '10px 12px' }}>{b.start_date}</td>
+                <td style={{ padding: '10px 12px' }}>{b.end_date}</td>
+                <td style={{ padding: '10px 12px', color: 'var(--color-muted)' }}>{b.reason || '—'}</td>
+                <td style={{ padding: '10px 12px' }}>
+                  <button onClick={() => deleteBlock(b.id)} style={{ color: '#c0392b', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                </td>
+              </tr>
+            ))}
+            {!blockRows.length && <tr><td colSpan={4} style={{ padding: '16px 12px', color: 'var(--color-muted)', textAlign: 'center' }}>No manual holds</td></tr>}
+          </tbody>
+        </table>
+        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Add Hold</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 10, alignItems: 'end' }}>
+          <div>
+            <label style={labelStyle}>Start</label>
+            <input type="date" style={inputStyle} value={newBlock.start_date} onChange={e => setNewBlock(b => ({ ...b, start_date: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>End</label>
+            <input type="date" style={inputStyle} value={newBlock.end_date} onChange={e => setNewBlock(b => ({ ...b, end_date: e.target.value }))} />
+          </div>
+          <div>
+            <label style={labelStyle}>Reason</label>
+            <input style={inputStyle} value={newBlock.reason} onChange={e => setNewBlock(b => ({ ...b, reason: e.target.value }))} placeholder="Optional" />
+          </div>
+          <button onClick={addBlock} style={btnPrimary}>Add</button>
+        </div>
+      </div>
     </div>
   )
 }

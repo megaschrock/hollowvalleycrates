@@ -12,23 +12,14 @@ export default function Calendar() {
   const [icalUrls, setIcalUrls] = useState({ airbnb_ical_url:'', vrbo_ical_url:'' })
   const [lastRefresh, setLastRefresh] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [blockRows, setBlockRows] = useState([])
-  const [newBlock, setNewBlock] = useState({ start_date:'', end_date:'', reason:'' })
   const [copied, setCopied] = useState(false)
   const [savingUrls, setSavingUrls] = useState(false)
 
   useEffect(() => {
-    loadData()
+    supabase.from('settings').select('airbnb_ical_url,vrbo_ical_url,last_ical_refresh').eq('id', 1).single().then(({ data: s }) => {
+      if (s) { setIcalUrls({ airbnb_ical_url: s.airbnb_ical_url||'', vrbo_ical_url: s.vrbo_ical_url||'' }); setLastRefresh(s.last_ical_refresh) }
+    })
   }, [])
-
-  async function loadData() {
-    const [{ data: s }, { data: blocks }] = await Promise.all([
-      supabase.from('settings').select('airbnb_ical_url,vrbo_ical_url,last_ical_refresh').eq('id', 1).single(),
-      supabase.from('blocked_dates').select('*').order('start_date')
-    ])
-    if (s) { setIcalUrls({ airbnb_ical_url: s.airbnb_ical_url||'', vrbo_ical_url: s.vrbo_ical_url||'' }); setLastRefresh(s.last_ical_refresh) }
-    if (blocks) setBlockRows(blocks)
-  }
 
   async function saveUrls() {
     setSavingUrls(true)
@@ -40,20 +31,10 @@ export default function Calendar() {
     setRefreshing(true)
     try {
       await fetch('/.netlify/functions/refresh-ical', { method: 'POST' })
-      await loadData()
+      const { data: s } = await supabase.from('settings').select('last_ical_refresh').eq('id', 1).single()
+      if (s) setLastRefresh(s.last_ical_refresh)
     } catch {}
     setRefreshing(false)
-  }
-
-  async function addBlock() {
-    if (!newBlock.start_date || !newBlock.end_date) return
-    const { data } = await supabase.from('blocked_dates').insert([{ ...newBlock, created_at: new Date().toISOString() }]).select().single()
-    if (data) { setBlockRows(r => [...r, data]); setNewBlock({ start_date:'', end_date:'', reason:'' }) }
-  }
-
-  async function deleteBlock(id) {
-    await supabase.from('blocked_dates').delete().eq('id', id)
-    setBlockRows(r => r.filter(b => b.id !== id))
   }
 
   function copyFeed() {
@@ -64,7 +45,7 @@ export default function Calendar() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 32 }}>Calendar</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 32 }}>Connections</h1>
 
       <div style={sectionStyle}>
         <h2 style={sh2}>iCal Import (Airbnb & VRBO)</h2>
@@ -91,46 +72,6 @@ export default function Calendar() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input readOnly style={{ ...inputStyle, flex: 1, background: 'var(--color-bg)' }} value={FEED_URL} />
           <button onClick={copyFeed} style={{ ...btnPrimary, whiteSpace: 'nowrap' }}>{copied ? 'Copied!' : 'Copy'}</button>
-        </div>
-      </div>
-
-      <div style={sectionStyle}>
-        <h2 style={sh2}>Manual Blocked Dates</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: '0.875rem' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              {['Start','End','Reason',''].map(h => <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {blockRows.map(b => (
-              <tr key={b.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={{ padding: '10px 12px' }}>{b.start_date}</td>
-                <td style={{ padding: '10px 12px' }}>{b.end_date}</td>
-                <td style={{ padding: '10px 12px', color: 'var(--color-muted)' }}>{b.reason || '—'}</td>
-                <td style={{ padding: '10px 12px' }}>
-                  <button onClick={() => deleteBlock(b.id)} style={{ color: '#c0392b', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
-                </td>
-              </tr>
-            ))}
-            {!blockRows.length && <tr><td colSpan={4} style={{ padding: '16px 12px', color: 'var(--color-muted)', textAlign: 'center' }}>No blocked dates</td></tr>}
-          </tbody>
-        </table>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Add Blocked Range</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 10, alignItems: 'end' }}>
-          <div>
-            <label style={labelStyle}>Start</label>
-            <input type="date" style={inputStyle} value={newBlock.start_date} onChange={e => setNewBlock(b => ({ ...b, start_date: e.target.value }))} />
-          </div>
-          <div>
-            <label style={labelStyle}>End</label>
-            <input type="date" style={inputStyle} value={newBlock.end_date} onChange={e => setNewBlock(b => ({ ...b, end_date: e.target.value }))} />
-          </div>
-          <div>
-            <label style={labelStyle}>Reason</label>
-            <input style={inputStyle} value={newBlock.reason} onChange={e => setNewBlock(b => ({ ...b, reason: e.target.value }))} placeholder="Optional" />
-          </div>
-          <button onClick={addBlock} style={btnPrimary}>Add</button>
         </div>
       </div>
     </div>
