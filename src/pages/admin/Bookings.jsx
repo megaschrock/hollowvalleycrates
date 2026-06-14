@@ -38,6 +38,7 @@ export default function Bookings() {
   const [blockReason, setBlockReason] = useState('')
   const [priceLabel, setPriceLabel] = useState('')
   const [priceRates, setPriceRates] = useState({ sun:'', mon:'', tue:'', wed:'', thu:'', fri:'', sat:'' })
+  const [priceRepeatYearly, setPriceRepeatYearly] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
 
@@ -105,6 +106,7 @@ export default function Bookings() {
       setSavedMsg('')
       setPriceLabel('')
       setPriceRates({ sun:'', mon:'', tue:'', wed:'', thu:'', fri:'', sat:'' })
+      setPriceRepeatYearly(false)
       setBlockReason('')
     }
   }
@@ -155,6 +157,7 @@ export default function Bookings() {
     setSaving(true)
     const payload = {
       label: priceLabel, start_date: selStart, end_date: selEnd,
+      repeat_yearly: priceRepeatYearly,
       created_at: new Date().toISOString(),
     }
     DAYS.forEach(d => { payload[d] = Number(priceRates[d]) || null })
@@ -302,7 +305,12 @@ export default function Bookings() {
               {action === 'price' && (
                 <div>
                   <label style={labelStyle}>Override Label</label>
-                  <input style={{ ...inputStyle, maxWidth: 360, marginBottom: 14 }} value={priceLabel} onChange={e => setPriceLabel(e.target.value)} placeholder="e.g. Labor Day Weekend 2026" />
+                  <input style={{ ...inputStyle, maxWidth: 360, marginBottom: 10 }} value={priceLabel} onChange={e => setPriceLabel(e.target.value)} placeholder="e.g. Labor Day Weekend 2026" />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
+                    <input type="checkbox" checked={priceRepeatYearly} onChange={e => setPriceRepeatYearly(e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>Repeat every year</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>(auto-applies same dates in future years)</span>
+                  </label>
                   <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: 10 }}>Set nightly rates for each day of the week within this range. Leave blank to use base rate.</p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 16 }}>
                     {DAYS.map((d, i) => (
