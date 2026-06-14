@@ -6,6 +6,10 @@ const inputStyle = {
   borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.95rem',
   background: 'var(--color-white)', color: 'var(--color-text)', outline: 'none',
 }
+function fmtDate(dateStr) {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 const labelStyle = {
   display: 'block', fontSize: '0.8rem', letterSpacing: '0.08em',
   textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 6, fontWeight: 500,
@@ -76,7 +80,7 @@ export default function InquiryForm({ checkin, checkout }) {
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,3rem)', letterSpacing: '0.04em', marginBottom: 8 }}>Request to Book</h2>
         <p style={{ color: 'var(--color-muted)', marginBottom: 36, fontSize: '0.95rem' }}>
           {checkin && checkout
-            ? `${checkin} → ${checkout} · We'll confirm availability and follow up within 24 hours.`
+            ? `${fmtDate(checkin)} → ${fmtDate(checkout)} · We'll confirm availability and follow up within 24 hours.`
             : 'Fill out the form below and we\'ll get back to you within 24 hours.'}
         </p>
 
