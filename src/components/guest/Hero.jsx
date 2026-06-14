@@ -35,7 +35,7 @@ export default function Hero({ settings }) {
           {settings?.vrbo_url && (
             <a href={settings.vrbo_url} target="_blank" rel="noopener noreferrer" style={btnStyle('outline')}>Book on VRBO</a>
           )}
-          <a href="#inquiry" style={btnStyle('solid')}>Private Booking</a>
+          <a href="#availability" style={btnStyle('solid')}>Book Now</a>
         </div>
       </div>
       <a href="#gallery" aria-label="Scroll down" style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', color: '#fff', opacity: 0.7, fontSize: 24, animation: 'bounce 2s infinite' }}>↓</a>
