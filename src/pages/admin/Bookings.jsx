@@ -179,7 +179,7 @@ export default function Bookings() {
   const upcomingIcal = icalBlocks.filter(b => b.end_date >= today)
   const upcomingBlocks = blockRows.filter(b => b.end_date >= today)
   const allUpcoming = [
-    ...upcomingInquiries.map(i => ({ type: 'inquiry', start: i.checkin, end: i.checkout, label: `${i.first_name} ${i.last_name}`, sub: `${fmtDate(i.checkin)} → ${fmtDate(i.checkout)}`, status: i.status, email: i.email })),
+    ...upcomingInquiries.map(i => ({ type: i.status === 'Confirmed' ? 'booking' : 'inquiry', start: i.checkin, end: i.checkout, label: `${i.first_name} ${i.last_name}`, sub: `${fmtDate(i.checkin)} → ${fmtDate(i.checkout)}`, status: i.status, email: i.email })),
     ...upcomingIcal.map(b => ({ type: b.source === 'airbnb' ? 'airbnb' : 'vrbo', start: b.start_date, end: b.end_date, label: b.source === 'airbnb' ? 'Airbnb' : 'VRBO', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, source: b.source })),
     ...upcomingBlocks.map(b => ({ type: 'manual', start: b.start_date, end: b.end_date, label: b.reason || 'Hold', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, id: b.id })),
   ].sort((a, b) => a.start.localeCompare(b.start))
