@@ -24,13 +24,13 @@ export default function GuestLanding({ forcePopup = false }) {
       <PromoPopup settings={settings} forceOpen={forcePopup} />
       <Hero settings={settings} />
       <Gallery />
-      <Description settings={settings} />
       <AvailabilityCalendar
         onDatesSelected={handleDatesSelected}
         selectedCheckin={checkin}
         selectedCheckout={checkout}
       />
       <InquiryForm checkin={checkin} checkout={checkout} />
+      <Description settings={settings} />
       <ContactSection settings={settings} />
       <Footer settings={settings} />
     </>
