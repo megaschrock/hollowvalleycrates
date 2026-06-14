@@ -180,14 +180,16 @@ export default function Bookings() {
   const upcomingBlocks = blockRows.filter(b => b.end_date >= today)
   const allUpcoming = [
     ...upcomingInquiries.map(i => ({ type: 'inquiry', start: i.checkin, end: i.checkout, label: `${i.first_name} ${i.last_name}`, sub: `${fmtDate(i.checkin)} → ${fmtDate(i.checkout)}`, status: i.status, email: i.email })),
-    ...upcomingIcal.map(b => ({ type: 'ical', start: b.start_date, end: b.end_date, label: b.source === 'airbnb' ? 'Airbnb Booking' : 'VRBO Booking', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, source: b.source })),
+    ...upcomingIcal.map(b => ({ type: b.source === 'airbnb' ? 'airbnb' : 'vrbo', start: b.start_date, end: b.end_date, label: b.source === 'airbnb' ? 'Airbnb' : 'VRBO', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, source: b.source })),
     ...upcomingBlocks.map(b => ({ type: 'manual', start: b.start_date, end: b.end_date, label: b.reason || 'Hold', sub: `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`, id: b.id })),
   ].sort((a, b) => a.start.localeCompare(b.start))
 
   const eventColors = {
-    inquiry: { bg: 'rgba(34,139,34,0.22)', color: '#1a6b1a' },
-    ical: { bg: 'rgba(59,130,246,0.18)', color: '#1d5bbf' },
-    manual: { bg: 'rgba(217,119,6,0.22)', color: '#b45309' },
+    inquiry:  { bg: 'rgba(234,179,8,0.22)',   color: '#92700a' },
+    booking:  { bg: 'rgba(34,139,34,0.22)',    color: '#1a6b1a' },
+    airbnb:   { bg: 'rgba(220,53,69,0.18)',    color: '#a71d2a' },
+    vrbo:     { bg: 'rgba(59,130,246,0.18)',   color: '#1d5bbf' },
+    manual:   { bg: 'rgba(120,120,130,0.18)',  color: '#555560' },
   }
 
   const displayEnd = selectingEnd && hoverDate ? hoverDate : selEnd
@@ -261,9 +263,11 @@ export default function Bookings() {
               })}
             </div>
             <div style={{ display: 'flex', gap: 20, padding: '12px 20px', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-muted)', flexWrap: 'wrap' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(34,139,34,0.22)', display: 'inline-block' }} /> Website inquiry</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(59,130,246,0.18)', display: 'inline-block' }} /> Platform booking</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(217,119,6,0.22)', display: 'inline-block' }} /> Manual hold</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(234,179,8,0.22)', display: 'inline-block' }} /> Inquiry</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(34,139,34,0.22)', display: 'inline-block' }} /> Website booking</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(220,53,69,0.18)', display: 'inline-block' }} /> Airbnb</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(59,130,246,0.18)', display: 'inline-block' }} /> VRBO</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: 'rgba(120,120,130,0.18)', display: 'inline-block' }} /> Blocked</span>
             </div>
           </div>
 
@@ -325,15 +329,15 @@ export default function Bookings() {
           {!allUpcoming.length && <p style={{ color: 'var(--color-muted)', textAlign: 'center', padding: 40 }}>No upcoming bookings</p>}
           {allUpcoming.map((item, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.type === 'inquiry' ? 'var(--color-primary)' : item.type === 'manual' ? '#8B6914' : 'var(--color-muted)', flexShrink: 0 }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: { inquiry: '#d4a017', booking: '#1a6b1a', airbnb: '#a71d2a', vrbo: '#1d5bbf', manual: '#888' }[item.type] || '#888' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: item.type === 'ical' ? 'var(--color-muted)' : 'var(--color-text)' }}>{item.label}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text)' }}>{item.label}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>{item.sub}</div>
                 {item.email && <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>{item.email}</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 100, background: item.type === 'inquiry' ? 'rgba(34,139,34,0.22)' : item.type === 'manual' ? 'rgba(217,119,6,0.22)' : 'rgba(59,130,246,0.18)', color: item.type === 'inquiry' ? '#1a6b1a' : item.type === 'manual' ? '#b45309' : '#1d5bbf', fontWeight: 500 }}>
-                  {item.type === 'inquiry' ? (item.status || 'New') : item.type === 'manual' ? 'Hold' : (item.source === 'airbnb' ? 'Airbnb' : 'VRBO')}
+                <div style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 100, fontWeight: 500, background: (eventColors[item.type] || eventColors.manual).bg, color: (eventColors[item.type] || eventColors.manual).color }}>
+                  {item.type === 'inquiry' ? (item.status || 'Inquiry') : item.type === 'booking' ? 'Booked' : item.type === 'airbnb' ? 'Airbnb' : item.type === 'vrbo' ? 'VRBO' : 'Hold'}
                 </div>
                 {item.type === 'manual' && (
                   <button onClick={() => deleteBlock(item.id)} style={{ fontSize: '0.75rem', color: '#c0392b', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
