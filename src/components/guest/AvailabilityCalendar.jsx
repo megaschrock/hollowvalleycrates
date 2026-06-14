@@ -197,6 +197,7 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
                   style={{
                     textAlign: 'center', padding: '6px 2px', borderRadius: 'var(--radius-sm)',
                     cursor: clickable ? 'pointer' : 'default',
+                    margin: d.blocked ? '0 6px' : '0',
                     background: isCheckin || isCheckout || isHoverEnd
                       ? 'var(--color-primary)'
                       : inRange ? 'rgba(44,74,46,0.12)'
