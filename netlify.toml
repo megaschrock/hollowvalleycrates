@@ -10,6 +10,11 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/calendar.ics"
+  to = "/.netlify/functions/calendar-feed"
+  status = 200
+
+[[redirects]]
   from = "/api/calendar.ics"
   to = "/.netlify/functions/calendar-feed"
   status = 200
