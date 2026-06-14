@@ -55,13 +55,19 @@ export default async function handler(req, context) {
           await fetch(`${supabaseUrl}/rest/v1/cached_ical_blocks`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(events.map(e => ({
-              source: source.key,
-              start_date: e.start,
-              end_date: e.end,
-              summary: e.summary || '',
-              last_synced: new Date().toISOString(),
-            }))),
+            body: JSON.stringify(events.map(e => {
+              // iCal DTEND is exclusive (checkout day) — subtract one day so checkout day shows as available
+              const endDate = new Date(e.end + 'T12:00:00')
+              endDate.setDate(endDate.getDate() - 1)
+              const end_date = endDate.toISOString().slice(0, 10)
+              return {
+                source: source.key,
+                start_date: e.start,
+                end_date,
+                summary: e.summary || '',
+                last_synced: new Date().toISOString(),
+              }
+            })),
           })
         }
       } catch {}
