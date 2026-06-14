@@ -31,6 +31,16 @@ export default function Inquiries() {
     setExpanded(null)
   }
 
+  async function deleteInquiry(inq) {
+    if (!confirm(`Delete inquiry from ${inq.first_name} ${inq.last_name}?`)) return
+    if (inq.blocked_date_id) {
+      await supabase.from('blocked_dates').delete().eq('id', inq.blocked_date_id)
+    }
+    await supabase.from('inquiries').delete().eq('id', inq.id)
+    setInquiries(i => i.filter(r => r.id !== inq.id))
+    setExpanded(null)
+  }
+
   const filtered = filter === 'All' ? inquiries : inquiries.filter(i => i.status === filter)
 
   return (
@@ -88,6 +98,7 @@ export default function Inquiries() {
                               <div style={{ display: 'flex', gap: 8 }}>
                                 <button onClick={() => saveRow(inq.id)} disabled={saving} style={{ padding: '8px 18px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', border: 'none' }}>{saving ? 'Saving…' : 'Save'}</button>
                                 <button onClick={() => setExpanded(null)} style={{ padding: '8px 18px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', background: 'none' }}>Cancel</button>
+                                <button onClick={() => deleteInquiry(inq)} style={{ padding: '8px 18px', border: '1px solid #c0392b', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', background: 'none', color: '#c0392b' }}>Delete</button>
                               </div>
                             </div>
                           </div>

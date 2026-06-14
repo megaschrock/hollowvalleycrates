@@ -7,6 +7,7 @@ const navItems = [
   { to: '/admin/content', label: 'Content' },
   { to: '/admin/pricing', label: 'Pricing' },
   { to: '/admin/calendar', label: 'Calendar' },
+  { to: '/admin/bookings', label: 'Bookings' },
   { to: '/admin/inquiries', label: 'Inquiries' },
   { to: '/admin/photos', label: 'Photos' },
   { to: '/admin/giveaway', label: 'Giveaway' },

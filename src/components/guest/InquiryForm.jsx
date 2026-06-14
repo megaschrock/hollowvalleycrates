@@ -38,16 +38,28 @@ export default function InquiryForm({ checkin, checkout }) {
     setLoading(true)
     setError(null)
     try {
+      let blocked_date_id = null
+
+      if (form.checkin && form.checkout) {
+        const { data: block } = await supabase.from('blocked_dates').insert([{
+          start_date: form.checkin,
+          end_date: form.checkout,
+          reason: 'Pending inquiry hold',
+          created_at: new Date().toISOString(),
+        }]).select().single()
+        if (block) blocked_date_id = block.id
+      }
+
       const { error } = await supabase.from('inquiries').insert([{
         ...form,
         adults: Number(form.adults),
         children: Number(form.children),
         pets: Number(form.pets),
         submitted_at: new Date().toISOString(),
+        blocked_date_id,
       }])
       if (error) throw error
 
-      // Fire SMS notification — non-blocking, don't fail submission if it errors
       fetch('/.netlify/functions/notify-inquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

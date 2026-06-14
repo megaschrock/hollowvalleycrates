@@ -11,6 +11,7 @@ import Content from './pages/admin/Content'
 import Pricing from './pages/admin/Pricing'
 import Calendar from './pages/admin/Calendar'
 import Inquiries from './pages/admin/Inquiries'
+import Bookings from './pages/admin/Bookings'
 import Photos from './pages/admin/Photos'
 import AdminGiveaway from './pages/admin/Giveaway'
 import Stats from './pages/admin/Stats'
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="pricing" element={<Pricing />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="inquiries" element={<Inquiries />} />
+          <Route path="bookings" element={<Bookings />} />
           <Route path="photos" element={<Photos />} />
           <Route path="giveaway" element={<AdminGiveaway />} />
           <Route path="stats" element={<Stats />} />
