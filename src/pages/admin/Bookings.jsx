@@ -19,6 +19,8 @@ export default function Bookings() {
   const [inquiries, setInquiries] = useState([])
   const [icalBlocks, setIcalBlocks] = useState([])
   const [blockRows, setBlockRows] = useState([])
+  const [baseRates, setBaseRates] = useState({})
+  const [priceOverrides, setPriceOverrides] = useState([])
   const [newBlock, setNewBlock] = useState({ start_date:'', end_date:'', reason:'' })
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date()
@@ -45,7 +47,23 @@ export default function Bookings() {
     supabase.from('inquiries').select('*').not('checkin', 'is', null).not('checkout', 'is', null).order('checkin').then(({ data }) => setInquiries(data || []))
     supabase.from('cached_ical_blocks').select('*').order('start_date').then(({ data }) => setIcalBlocks(data || []))
     supabase.from('blocked_dates').select('*').order('start_date').then(({ data }) => setBlockRows(data || []))
+    supabase.from('pricing_base').select('*').then(({ data }) => {
+      if (data) { const m = {}; data.forEach(r => { m[r.day_of_week] = r.rate }); setBaseRates(m) }
+    })
+    supabase.from('pricing_overrides').select('*').then(({ data }) => setPriceOverrides(data || []))
   }, [])
+
+  function getRateForDate(dateStr) {
+    const dow = new Date(dateStr + 'T12:00:00').getDay()
+    const keys = ['sun','mon','tue','wed','thu','fri','sat']
+    for (const ovr of priceOverrides) {
+      if (dateStr >= ovr.start_date && dateStr <= ovr.end_date) {
+        const val = ovr[keys[dow]]
+        if (val != null) return Number(val)
+      }
+    }
+    return baseRates[dow] ? Number(baseRates[dow]) : null
+  }
 
   const { year, month } = viewDate
   const firstDay = new Date(year, month, 1).getDay()
@@ -202,6 +220,7 @@ export default function Bookings() {
                 const isStart = dateStr === selStart
                 const isEnd = dateStr === selEnd || (selectingEnd && dateStr === hoverDate && hoverDate > selStart)
                 const inRange = isInSelRange(dateStr)
+                const rate = getRateForDate(dateStr)
 
                 return (
                   <div
@@ -216,11 +235,13 @@ export default function Bookings() {
                       transition: 'background 0.1s',
                     }}
                   >
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isStart || isEnd ? '#fff' : 'var(--color-text)', marginBottom: 4 }}>{d}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isStart || isEnd ? '#fff' : 'var(--color-text)' }}>{d}</span>
+                      {rate && <span style={{ fontSize: '0.65rem', color: isStart || isEnd ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
+                    </div>
                     {events.map((ev, ei) => (
                       <div key={ei} style={{
                         fontSize: '0.65rem', fontWeight: 500, padding: '1px 4px', borderRadius: 2, marginBottom: 2,
-                        ...(isStart || isEnd ? { bg: 'rgba(255,255,255,0.25)', color: '#fff' } : eventColors[ev.type]),
                         background: isStart || isEnd ? 'rgba(255,255,255,0.25)' : eventColors[ev.type].bg,
                         color: isStart || isEnd ? '#fff' : eventColors[ev.type].color,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
