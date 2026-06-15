@@ -97,7 +97,15 @@ export default function InquiryForm({ checkin, checkout }) {
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <style>{`
+            .iq-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            .iq-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+            @media (max-width: 500px) {
+              .iq-2col { grid-template-columns: 1fr; }
+              .iq-3col { grid-template-columns: 1fr 1fr; }
+            }
+          `}</style>
+          <div className="iq-2col">
             <div>
               <label style={labelStyle}>First Name *</label>
               <input required style={inputStyle} value={form.first_name} onChange={e => set('first_name', e.target.value)} />
@@ -107,7 +115,7 @@ export default function InquiryForm({ checkin, checkout }) {
               <input required style={inputStyle} value={form.last_name} onChange={e => set('last_name', e.target.value)} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="iq-2col">
             <div>
               <label style={labelStyle}>Email *</label>
               <input required type="email" style={inputStyle} value={form.email} onChange={e => set('email', e.target.value)} />
@@ -117,18 +125,18 @@ export default function InquiryForm({ checkin, checkout }) {
               <input type="tel" style={inputStyle} value={form.phone} onChange={e => set('phone', e.target.value)} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="iq-2col">
             <div>
               <label style={labelStyle}>Check-in Date *</label>
-              <input required type="date" style={inputStyle} value={form.checkin} onChange={e => set('checkin', e.target.value)} />
+              <input required type="date" style={{ ...inputStyle, width: 'auto' }} value={form.checkin} onChange={e => set('checkin', e.target.value)} />
             </div>
             <div>
               <label style={labelStyle}>Check-out Date *</label>
-              <input required type="date" style={inputStyle} value={form.checkout} onChange={e => set('checkout', e.target.value)} />
+              <input required type="date" style={{ ...inputStyle, width: 'auto' }} value={form.checkout} onChange={e => set('checkout', e.target.value)} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            {[['adults','Adults',1],['children','Children',0],['pets','Pets · 1 small dog max',0]].map(([field, label, min]) => (
+          <div className="iq-3col">
+            {[['adults','Adults',1],['children','Children',0],['pets','Pets (max 1 dog)',0]].map(([field, label, min]) => (
               <div key={field}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" min={min} style={inputStyle} value={form[field]} onChange={e => set(field, e.target.value)} />
