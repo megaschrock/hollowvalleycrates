@@ -398,7 +398,7 @@ export default function Bookings() {
         </table>
         <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Add Hold</h3>
         <style>{`.add-hold-grid { display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 10px; align-items: end; }
-          @media (max-width: 600px) { .add-hold-grid { grid-template-columns: 1fr 1fr; } .add-hold-grid button { grid-column: span 2; } }`}</style>
+          @media (max-width: 700px) { .add-hold-grid { grid-template-columns: 1fr; } }`}</style>
         <div className="add-hold-grid">
           <div>
             <label style={labelStyle}>Start</label>
