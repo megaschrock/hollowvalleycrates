@@ -402,11 +402,11 @@ export default function Bookings() {
         <div className="add-hold-grid">
           <div>
             <label style={labelStyle}>Start</label>
-            <input type="date" style={inputStyle} value={newBlock.start_date} onChange={e => setNewBlock(b => ({ ...b, start_date: e.target.value }))} />
+            <input type="date" style={{ ...inputStyle, width: 'auto' }} value={newBlock.start_date} onChange={e => setNewBlock(b => ({ ...b, start_date: e.target.value }))} />
           </div>
           <div>
             <label style={labelStyle}>End</label>
-            <input type="date" style={inputStyle} value={newBlock.end_date} onChange={e => setNewBlock(b => ({ ...b, end_date: e.target.value }))} />
+            <input type="date" style={{ ...inputStyle, width: 'auto' }} value={newBlock.end_date} onChange={e => setNewBlock(b => ({ ...b, end_date: e.target.value }))} />
           </div>
           <div>
             <label style={labelStyle}>Reason</label>

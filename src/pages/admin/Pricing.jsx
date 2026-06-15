@@ -173,11 +173,11 @@ export default function Pricing() {
               </div>
               <div>
                 <label style={labelStyle}>Start Date</label>
-                <input type="date" style={inputStyle} value={newOverride.start_date} onChange={e => setNewOverride(o => ({ ...o, start_date: e.target.value }))} />
+                <input type="date" style={{ ...inputStyle, width: 'auto' }} value={newOverride.start_date} onChange={e => setNewOverride(o => ({ ...o, start_date: e.target.value }))} />
               </div>
               <div>
                 <label style={labelStyle}>End Date</label>
-                <input type="date" style={inputStyle} value={newOverride.end_date} onChange={e => setNewOverride(o => ({ ...o, end_date: e.target.value }))} />
+                <input type="date" style={{ ...inputStyle, width: 'auto' }} value={newOverride.end_date} onChange={e => setNewOverride(o => ({ ...o, end_date: e.target.value }))} />
               </div>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
