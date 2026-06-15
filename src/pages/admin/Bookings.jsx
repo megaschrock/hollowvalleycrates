@@ -41,6 +41,7 @@ export default function Bookings() {
   const [priceRepeatYearly, setPriceRepeatYearly] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
+  const [listFilters, setListFilters] = useState({ inquiry: true, booking: true, airbnb: true, vrbo: true, manual: true })
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -350,9 +351,25 @@ export default function Bookings() {
           )}
         </>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          {!allUpcoming.length && <p style={{ color: 'var(--color-muted)', textAlign: 'center', padding: 40 }}>No upcoming bookings</p>}
-          {allUpcoming.map((item, i) => (
+        <div style={{ marginBottom: 24 }}>
+          {/* Filters */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            {[
+              { key: 'inquiry',  label: 'Inquiry',          bg: 'rgba(234,179,8,0.22)',  color: '#92700a' },
+              { key: 'booking',  label: 'Website booking',  bg: 'rgba(34,139,34,0.22)',  color: '#1a6b1a' },
+              { key: 'airbnb',   label: 'Airbnb',           bg: 'rgba(220,53,69,0.18)',  color: '#a71d2a' },
+              { key: 'vrbo',     label: 'VRBO',             bg: 'rgba(59,130,246,0.18)', color: '#1d5bbf' },
+              { key: 'manual',   label: 'Manual hold',      bg: 'rgba(120,120,130,0.18)',color: '#555560' },
+            ].map(f => (
+              <button key={f.key} onClick={() => setListFilters(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
+                style={{ padding: '5px 14px', borderRadius: 100, fontSize: '0.78rem', fontWeight: 500, cursor: 'pointer', border: `2px solid ${listFilters[f.key] ? f.color : 'var(--color-border)'}`, background: listFilters[f.key] ? f.bg : 'transparent', color: listFilters[f.key] ? f.color : 'var(--color-muted)', transition: 'all 0.15s' }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {!allUpcoming.filter(item => listFilters[item.type]).length && <p style={{ color: 'var(--color-muted)', textAlign: 'center', padding: 40 }}>No bookings match the selected filters</p>}
+          {allUpcoming.filter(item => listFilters[item.type]).map((item, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: { inquiry: '#d4a017', booking: '#1a6b1a', airbnb: '#a71d2a', vrbo: '#1d5bbf', manual: '#888' }[item.type] || '#888' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -370,6 +387,7 @@ export default function Bookings() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
 
