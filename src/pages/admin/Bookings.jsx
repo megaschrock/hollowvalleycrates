@@ -327,13 +327,15 @@ export default function Bookings() {
                     <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>(auto-applies same dates in future years)</span>
                   </label>
                   <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginBottom: 10 }}>Set nightly rates for each day of the week within this range. Leave blank to use base rate.</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 16 }}>
+                  <style>{`.cal-price-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 10px; margin-bottom: 16px; }
+                    @media (max-width: 600px) { .cal-price-grid { grid-template-columns: repeat(4,1fr); } }`}</style>
+                  <div className="cal-price-grid">
                     {DAYS.map((d, i) => (
                       <div key={d}>
                         <label style={{ ...labelStyle, textAlign: 'center' }}>{DAY_LABELS[i]}</label>
                         <div style={{ position: 'relative' }}>
-                          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)', fontSize: '0.85rem' }}>$</span>
-                          <input type="number" min="0" style={{ ...inputStyle, paddingLeft: 20, textAlign: 'center' }} value={priceRates[d]} onChange={e => setPriceRates(r => ({ ...r, [d]: e.target.value }))} />
+                          <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)', fontSize: '0.85rem' }}>$</span>
+                          <input type="number" min="0" style={{ ...inputStyle, paddingLeft: 18, textAlign: 'center', fontSize: '0.85rem' }} value={priceRates[d]} onChange={e => setPriceRates(r => ({ ...r, [d]: e.target.value }))} />
                         </div>
                       </div>
                     ))}
@@ -395,7 +397,9 @@ export default function Bookings() {
           </tbody>
         </table>
         <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Add Hold</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 10, alignItems: 'end' }}>
+        <style>{`.add-hold-grid { display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 10px; align-items: end; }
+          @media (max-width: 600px) { .add-hold-grid { grid-template-columns: 1fr 1fr; } .add-hold-grid button { grid-column: span 2; } }`}</style>
+        <div className="add-hold-grid">
           <div>
             <label style={labelStyle}>Start</label>
             <input type="date" style={inputStyle} value={newBlock.start_date} onChange={e => setNewBlock(b => ({ ...b, start_date: e.target.value }))} />

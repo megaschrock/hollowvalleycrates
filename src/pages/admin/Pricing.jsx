@@ -164,7 +164,9 @@ export default function Pricing() {
         {/* Add form */}
         {showAddForm && (
           <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: 20, marginBottom: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <style>{`.override-header-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+              @media (max-width: 600px) { .override-header-grid { grid-template-columns: 1fr; } }`}</style>
+            <div className="override-header-grid">
               <div>
                 <label style={labelStyle}>Label (e.g. "Memorial Day")</label>
                 <input style={{ ...inputStyle, textAlign: 'left' }} value={newOverride.label} onChange={e => setNewOverride(o => ({ ...o, label: e.target.value }))} placeholder="Holiday name…" />
