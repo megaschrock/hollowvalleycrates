@@ -380,9 +380,15 @@ function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners,
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {reservations.map(r => {
             const asgn = assignments.find(a => a.reservation_id === r.id)
+            const nextCheckin = reservations
+              .filter(x => x.start_date > r.end_date)
+              .sort((a, b) => a.start_date.localeCompare(b.start_date))[0]?.start_date
+            const cleaningMin = r.end_date
+            const cleaningMax = nextCheckin
+              ? new Date(new Date(nextCheckin).getTime() - 86400000).toISOString().slice(0, 10)
+              : new Date(new Date(r.end_date).getTime() + 14 * 86400000).toISOString().slice(0, 10)
             return (
               <div key={r.id} style={{ ...card, padding: '16px 20px' }}>
-                {/* Header row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div>
                     <SourceBadge source={r.source} />
@@ -393,7 +399,6 @@ function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners,
                   </div>
                 </div>
 
-                {/* Fields grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
                   <div>
                     <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>Cleaner</div>
@@ -403,8 +408,16 @@ function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners,
                     </select>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>Scheduled Date</div>
-                    <input type="date" value={asgn?.scheduled_date || r.end_date || ''} onChange={e => handleFieldChange(r.id, r.end_date, 'scheduled_date', e.target.value)} style={inputStyle} />
+                    <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>
+                      Scheduled Date
+                      <span style={{ marginLeft: 6, textTransform: 'none', letterSpacing: 0, fontSize: '0.68rem' }}>
+                        ({fmtDate(cleaningMin)} – {fmtDate(cleaningMax)})
+                      </span>
+                    </div>
+                    <input type="date" min={cleaningMin} max={cleaningMax}
+                      value={asgn?.scheduled_date || r.end_date || ''}
+                      onChange={e => handleFieldChange(r.id, r.end_date, 'scheduled_date', e.target.value)}
+                      style={inputStyle} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>Notes</div>
@@ -412,19 +425,11 @@ function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners,
                   </div>
                 </div>
 
-                {/* Checkboxes */}
-                <div style={{ display: 'flex', gap: 24 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text)' }}>
-                    <input type="checkbox" checked={asgn?.done || false} onChange={e => handleFieldChange(r.id, r.end_date, 'done', e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
-                    Done
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text)' }}>
-                    <input type="checkbox" checked={asgn?.paid || false} onChange={e => handleFieldChange(r.id, r.end_date, 'paid', e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: '#1a5c3a', cursor: 'pointer' }} />
-                    Paid
-                  </label>
-                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                  <input type="checkbox" checked={asgn?.paid || false} onChange={e => handleFieldChange(r.id, r.end_date, 'paid', e.target.checked)}
+                    style={{ width: 18, height: 18, accentColor: '#1a5c3a', cursor: 'pointer' }} />
+                  Paid
+                </label>
               </div>
             )
           })}
