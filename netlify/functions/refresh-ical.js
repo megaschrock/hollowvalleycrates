@@ -52,22 +52,41 @@ export default async function handler(req, context) {
         await fetch(`${supabaseUrl}/rest/v1/cached_ical_blocks?source=eq.${source.key}`, { method: 'DELETE', headers })
 
         if (events.length) {
+          const blocks = events.map(e => {
+            // iCal DTEND is exclusive (checkout day) — subtract one day so checkout day shows as available
+            const endDate = new Date(e.end + 'T12:00:00')
+            endDate.setDate(endDate.getDate() - 1)
+            const end_date = endDate.toISOString().slice(0, 10)
+            return {
+              source: source.key,
+              start_date: e.start,
+              end_date,
+              summary: e.summary || '',
+              last_synced: new Date().toISOString(),
+            }
+          })
+
           await fetch(`${supabaseUrl}/rest/v1/cached_ical_blocks`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(events.map(e => {
-              // iCal DTEND is exclusive (checkout day) — subtract one day so checkout day shows as available
-              const endDate = new Date(e.end + 'T12:00:00')
-              endDate.setDate(endDate.getDate() - 1)
-              const end_date = endDate.toISOString().slice(0, 10)
-              return {
-                source: source.key,
-                start_date: e.start,
-                end_date,
-                summary: e.summary || '',
-                last_synced: new Date().toISOString(),
-              }
-            })),
+            body: JSON.stringify(blocks),
+          })
+
+          // Upsert into reservations — creates skeleton rows, won't overwrite existing guest data
+          const reservationRows = blocks.map(b => {
+            const nights = Math.round((new Date(b.end_date) - new Date(b.start_date)) / 86400000)
+            return {
+              source: b.source,
+              start_date: b.start_date,
+              end_date: b.end_date,
+              nights,
+              summary: b.summary,
+            }
+          })
+          await fetch(`${supabaseUrl}/rest/v1/reservations`, {
+            method: 'POST',
+            headers: { ...headers, 'Prefer': 'resolution=ignore-duplicates' },
+            body: JSON.stringify(reservationRows),
           })
         }
       } catch {}
