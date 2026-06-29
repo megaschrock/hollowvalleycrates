@@ -50,19 +50,23 @@ function parseVrboCsv(text) {
     const cols = splitCsvLine(line)
     const row = {}
     headers.forEach((h, i) => row[h] = (cols[i] || '').replace(/"/g, '').trim())
-    const checkin = parseDate(row['arrival'] || row['check-in'] || row['start date'] || row['checkin'])
-    const checkout = parseDate(row['departure'] || row['check-out'] || row['end date'] || row['checkout'])
+    const checkin = parseDate(row['check-in'] || row['arrival'] || row['start date'] || row['checkin'])
+    const checkout = parseDate(row['check-out'] || row['departure'] || row['end date'] || row['checkout'])
     if (!checkin) return null
+    // Only import Booked reservations
+    if (row['status'] && row['status'].toLowerCase() !== 'booked') return null
     return {
       source: 'vrbo',
       start_date: checkin,
       end_date: checkout || checkin,
-      guest_name: row['guest name'] || row['guest'] || '',
+      guest_name: row['inquirer'] || row['guest name'] || row['guest'] || '',
+      email: row['email'] || '',
+      phone: row['phone'] || '',
       confirmation_code: row['reservation id'] || row['confirmation'] || '',
       cleaning_fee: parseMoney(row['cleaning fee'] || row['cleaning']),
       pet_fee: parseMoney(row['pet fee'] || row['pet']),
       net_payout: parseMoney(row['owner payout'] || row['net'] || row['payout']),
-      nights: parseInt(row['nights'] || '0') || null,
+      nights: parseInt(row['nights stay'] || row['nights'] || '0') || null,
     }
   }).filter(Boolean)
 }
