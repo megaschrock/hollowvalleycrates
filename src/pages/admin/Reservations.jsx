@@ -81,6 +81,9 @@ function splitCsvLine(line) {
 
 function parseDate(s) {
   if (!s) return null
+  // Handle MM/DD/YYYY (Airbnb/VRBO export format)
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`
   const d = new Date(s)
   if (isNaN(d)) return null
   return d.toISOString().slice(0, 10)
