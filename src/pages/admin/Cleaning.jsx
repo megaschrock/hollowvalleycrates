@@ -3,23 +3,20 @@ import { supabase } from '../../lib/supabase'
 
 const card = { background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '20px 24px' }
 const inputStyle = { width: '100%', padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-body)', fontSize: '0.82rem', boxSizing: 'border-box' }
-const SOURCE_COLORS = { airbnb: '#FF5A5F', vrbo: '#1C6CB5', direct: '#2C4A2E' }
+const label = { fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }
 
 function fmtDate(s) {
   if (!s) return '—'
   return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-function yearOf(dateStr) {
-  return new Date(dateStr + 'T12:00:00').getFullYear()
+function fmtShort(s) {
+  if (!s) return '—'
+  return new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function SourceBadge({ source }) {
-  return (
-    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: (SOURCE_COLORS[source] || '#888') + '22', color: SOURCE_COLORS[source] || 'var(--color-muted)', textTransform: 'capitalize' }}>
-      {source}
-    </span>
-  )
+function yearOf(dateStr) {
+  return new Date(dateStr + 'T12:00:00').getFullYear()
 }
 
 export default function Cleaning() {
@@ -79,12 +76,7 @@ export default function Cleaning() {
     await supabase.from('cleaners').update({ [field]: value }).eq('id', id)
   }
 
-  async function handleCleanerChange(reservationId, checkoutDate, cleanerId) {
-    const asgn = await ensureAssignment(reservationId, checkoutDate)
-    if (asgn) updateAssignment(asgn.id, 'cleaner_id', cleanerId || null)
-  }
-
-  async function handleFieldChange(reservationId, checkoutDate, field, value) {
+  async function handleField(reservationId, checkoutDate, field, value) {
     const asgn = await ensureAssignment(reservationId, checkoutDate)
     if (asgn) updateAssignment(asgn.id, field, value)
   }
@@ -92,6 +84,7 @@ export default function Cleaning() {
   const years = [...new Set(reservations.map(r => yearOf(r.start_date)))].sort((a, b) => b - a)
   if (!years.includes(new Date().getFullYear())) years.unshift(new Date().getFullYear())
   const filteredRes = reservations.filter(r => yearOf(r.start_date) === yearFilter)
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
 
   if (loading) return <div style={{ color: 'var(--color-muted)', padding: 32 }}>Loading…</div>
 
@@ -148,56 +141,69 @@ export default function Cleaning() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {visible.map(r => {
               const asgn = assignments.find(a => a.reservation_id === r.id)
-              const nextCheckin = filteredRes
-                .filter(x => x.start_date > r.end_date)
-                .sort((a, b) => a.start_date.localeCompare(b.start_date))[0]?.start_date
+              const allRes = reservations.sort((a, b) => a.start_date.localeCompare(b.start_date))
+              const nextCheckin = allRes.find(x => x.start_date > r.end_date)?.start_date
               const cleaningMin = r.end_date
               const cleaningMax = nextCheckin
                 ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
                 : new Date(new Date(r.end_date + 'T12:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10)
+              const guestLabel = r.guest_name || 'Upcoming Guest'
+
               return (
-                <div key={r.id} style={{ ...card, padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <SourceBadge source={r.source} />
-                      <span style={{ marginLeft: 10, fontWeight: 500, fontSize: '0.9rem', color: 'var(--color-text)' }}>{r.guest_name || 'Guest'}</span>
+                <div key={r.id} style={{ ...card, padding: '20px 24px' }}>
+                  {/* Card header */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--color-primary)', marginBottom: 2 }}>
+                      Cleaning after {guestLabel}
                     </div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--color-muted)' }}>
-                      {fmtDate(r.start_date)} → {fmtDate(r.end_date)}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>Cleaner</div>
-                      <select value={asgn?.cleaner_id || ''} onChange={e => handleCleanerChange(r.id, r.end_date, e.target.value)} style={inputStyle}>
-                        <option value="">— Assign —</option>
-                        {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>
-                        Scheduled Date
-                        <span style={{ marginLeft: 6, textTransform: 'none', letterSpacing: 0, fontSize: '0.68rem' }}>
-                          ({fmtDate(cleaningMin)} – {fmtDate(cleaningMax)})
-                        </span>
-                      </div>
-                      <input type="date" min={cleaningMin} max={cleaningMax}
-                        value={asgn?.scheduled_date || r.end_date || ''}
-                        onChange={e => handleFieldChange(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                        style={inputStyle} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }}>Notes</div>
-                      <input defaultValue={asgn?.notes || ''} onBlur={e => handleFieldChange(r.id, r.end_date, 'notes', e.target.value)} style={inputStyle} placeholder="Notes…" />
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+                      {fmtDate(r.start_date)} – {fmtDate(r.end_date)}
                     </div>
                   </div>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text)' }}>
-                    <input type="checkbox" checked={asgn?.paid || false} onChange={e => handleFieldChange(r.id, r.end_date, 'paid', e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: '#1a5c3a', cursor: 'pointer' }} />
-                    Paid
-                  </label>
+                  {/* Cleaner picker */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={label}>Cleaner</div>
+                    <select value={asgn?.cleaner_id || ''} onChange={e => handleField(r.id, r.end_date, 'cleaner_id', e.target.value || null)} style={inputStyle}>
+                      <option value="">— Assign cleaner —</option>
+                      {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Available window + schedule date */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={label}>Dates available to clean</div>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: 8, fontWeight: 500 }}>
+                      {fmtShort(cleaningMin)} – {nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}
+                    </div>
+                    <div style={{ ...label, marginTop: 0 }}>Schedule date</div>
+                    <input type="date" min={cleaningMin} max={cleaningMax}
+                      value={asgn?.scheduled_date || r.end_date || ''}
+                      onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
+                      style={{ ...inputStyle, maxWidth: 200 }} />
+                  </div>
+
+                  {/* Notes */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={label}>Notes</div>
+                    <input defaultValue={asgn?.notes || ''} onBlur={e => handleField(r.id, r.end_date, 'notes', e.target.value)} style={inputStyle} placeholder="Notes…" />
+                  </div>
+
+                  {/* Pet + Paid row */}
+                  <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                      <input type="checkbox" checked={asgn?.has_pet || false}
+                        onChange={e => handleField(r.id, r.end_date, 'has_pet', e.target.checked)}
+                        style={{ width: 18, height: 18, accentColor: '#c0392b', cursor: 'pointer' }} />
+                      Pet
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                      <input type="checkbox" checked={asgn?.paid || false}
+                        onChange={e => handleField(r.id, r.end_date, 'paid', e.target.checked)}
+                        style={{ width: 18, height: 18, accentColor: '#1a5c3a', cursor: 'pointer' }} />
+                      Paid
+                    </label>
+                  </div>
                 </div>
               )
             })}
