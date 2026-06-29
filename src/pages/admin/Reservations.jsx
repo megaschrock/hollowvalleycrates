@@ -99,8 +99,29 @@ function parseDate(s) {
 
 function parseMoney(s) {
   if (!s) return null
-  const n = parseFloat(String(s).replace(/[$,]/g, ''))
+  const n = parseFloat(String(s).replace(/[$,(]/g, '').replace(/\)/g, ''))
   return isNaN(n) ? null : n
+}
+
+function parseVrboDepositCsv(text) {
+  const lines = text.trim().split('\n')
+  const grouped = {}
+  for (const line of lines) {
+    const cols = splitCsvLine(line)
+    const confCode = (cols[8] || '').replace(/"/g, '').trim()
+    if (!confCode || !confCode.startsWith('HA-')) continue
+    const payout = parseMoney(cols[11])
+    if (payout == null) continue
+    if (!grouped[confCode]) {
+      grouped[confCode] = {
+        confirmation_code: confCode,
+        guest_name: [cols[9], cols[10]].map(s => s.replace(/"/g, '').trim()).filter(Boolean).join(' '),
+        net_payout: 0,
+      }
+    }
+    grouped[confCode].net_payout += payout
+  }
+  return Object.values(grouped).map(r => ({ ...r, net_payout: Math.round(r.net_payout * 100) / 100 }))
 }
 
 // --- Main component ---
@@ -137,7 +158,9 @@ export default function Reservations() {
     const reader = new FileReader()
     reader.onload = ev => {
       const text = ev.target.result
-      const rows = csvSource === 'airbnb' ? parseAirbnbCsv(text) : parseVrboCsv(text)
+      const rows = csvSource === 'airbnb' ? parseAirbnbCsv(text)
+        : csvSource === 'vrbo-deposits' ? parseVrboDepositCsv(text)
+        : parseVrboCsv(text)
       setCsvPreview(rows)
     }
     reader.readAsText(file)
@@ -146,8 +169,17 @@ export default function Reservations() {
   async function importCsv() {
     if (!csvPreview?.length) return
     setImporting(true)
-    for (const row of csvPreview) {
-      await supabase.from('reservations').upsert(row, { onConflict: 'source,start_date', ignoreDuplicates: false })
+    if (csvSource === 'vrbo-deposits') {
+      // Match by confirmation_code and update net_payout only
+      for (const row of csvPreview) {
+        await supabase.from('reservations')
+          .update({ net_payout: row.net_payout })
+          .eq('confirmation_code', row.confirmation_code)
+      }
+    } else {
+      for (const row of csvPreview) {
+        await supabase.from('reservations').upsert(row, { onConflict: 'source,start_date', ignoreDuplicates: false })
+      }
     }
     setCsvPreview(null)
     fileRef.current.value = ''
@@ -253,10 +285,18 @@ function ReservationsTab({ reservations, years, yearFilter, setYearFilter, csvSo
       <div style={{ ...card, marginBottom: 24 }}>
         <div style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 12 }}>Import CSV</div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={csvSource} onChange={e => setCsvSource(e.target.value)} style={{ ...inputStyle, width: 120 }}>
-            <option value="airbnb">Airbnb</option>
-            <option value="vrbo">VRBO</option>
+          <select value={csvSource} onChange={e => { setCsvSource(e.target.value); setCsvPreview(null); if (fileRef.current) fileRef.current.value = '' }} style={{ ...inputStyle, width: 200 }}>
+            <option value="airbnb">Airbnb — Reservations</option>
+            <option value="vrbo">VRBO — Reservations</option>
+            <option value="vrbo-deposits">VRBO — Deposit Report</option>
           </select>
+          <a href={
+            csvSource === 'airbnb' ? 'https://www.airbnb.com/earnings/512863776/paid' :
+            csvSource === 'vrbo-deposits' ? 'https://www.vrbo.com/supply/financial-reporting?tab=bank-deposits' :
+            'https://www.vrbo.com/p/calendar/321.3384796.3957924/rail/downloadBookingDetails'
+          } target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            Get this report →
+          </a>
           <input ref={fileRef} type="file" accept=".csv" onChange={onFileChange} style={{ fontSize: '0.82rem', color: 'var(--color-text)' }} />
           {csvPreview && <>
             <span style={{ fontSize: '0.82rem', color: 'var(--color-muted)' }}>{csvPreview.length} rows found</span>
@@ -266,12 +306,35 @@ function ReservationsTab({ reservations, years, yearFilter, setYearFilter, csvSo
             <button onClick={() => { setCsvPreview(null); fileRef.current.value = '' }} style={{ padding: '6px 12px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-muted)' }}>Cancel</button>
           </>}
         </div>
-        {csvPreview && (
+        {csvPreview && csvSource === 'vrbo-deposits' && (
           <div style={{ marginTop: 12, overflowX: 'auto' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {['Source','Check-in','Check-out','Guest','Nights','Gross','Cleaning Fee','Pet Fee','Net','Conf#'].map(h => (
+                  {['Conf #','Guest','Net Payout'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {csvPreview.slice(0, 10).map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '4px 10px' }}>{r.confirmation_code}</td>
+                    <td style={{ padding: '4px 10px' }}>{r.guest_name}</td>
+                    <td style={{ padding: '4px 10px' }}>{r.net_payout != null ? `$${r.net_payout.toFixed(2)}` : '—'}</td>
+                  </tr>
+                ))}
+                {csvPreview.length > 10 && <tr><td colSpan={3} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {csvPreview && csvSource !== 'vrbo-deposits' && (
+          <div style={{ marginTop: 12, overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  {['Source','Check-in','Check-out','Guest','Nights','Cleaning Fee','Pet Fee','Net','Conf#'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>
                   ))}
                 </tr>
@@ -284,14 +347,13 @@ function ReservationsTab({ reservations, years, yearFilter, setYearFilter, csvSo
                     <td style={{ padding: '4px 10px' }}>{fmtDate(r.end_date)}</td>
                     <td style={{ padding: '4px 10px' }}>{r.guest_name}</td>
                     <td style={{ padding: '4px 10px' }}>{r.nights}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.gross_amount != null ? `$${r.gross_amount}` : '—'}</td>
                     <td style={{ padding: '4px 10px' }}>{r.cleaning_fee != null ? `$${r.cleaning_fee}` : '—'}</td>
                     <td style={{ padding: '4px 10px' }}>{r.pet_fee != null ? `$${r.pet_fee}` : '—'}</td>
                     <td style={{ padding: '4px 10px' }}>{r.net_payout != null ? `$${r.net_payout}` : '—'}</td>
                     <td style={{ padding: '4px 10px' }}>{r.confirmation_code}</td>
                   </tr>
                 ))}
-                {csvPreview.length > 10 && <tr><td colSpan={10} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
+                {csvPreview.length > 10 && <tr><td colSpan={9} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
               </tbody>
             </table>
           </div>
