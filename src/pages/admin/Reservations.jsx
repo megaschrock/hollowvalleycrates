@@ -11,6 +11,10 @@ function fmtDate(s) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
+function yearOf(dateStr) {
+  return new Date(dateStr + 'T12:00:00').getFullYear()
+}
+
 function nightsBetween(start, end) {
   if (!start || !end) return '—'
   return Math.round((new Date(end) - new Date(start)) / 86400000)
@@ -187,9 +191,9 @@ export default function Reservations() {
     await supabase.from('cleaners').update({ [field]: value }).eq('id', id)
   }
 
-  const years = [...new Set(reservations.map(r => new Date(r.start_date).getFullYear()))].sort((a,b)=>b-a)
+  const years = [...new Set(reservations.map(r => yearOf(r.start_date)))].sort((a,b)=>b-a)
   if (!years.includes(new Date().getFullYear())) years.unshift(new Date().getFullYear())
-  const filteredRes = reservations.filter(r => new Date(r.start_date).getFullYear() === yearFilter)
+  const filteredRes = reservations.filter(r => yearOf(r.start_date) === yearFilter)
 
   if (loading) return <div style={{ color: 'var(--color-muted)', padding: 32 }}>Loading…</div>
 
