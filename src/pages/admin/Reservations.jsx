@@ -35,7 +35,6 @@ function parseAirbnbCsv(text) {
       end_date: checkout || checkin,
       guest_name: row['guest'] || '',
       confirmation_code: row['confirmation code'] || '',
-      gross_amount: parseMoney(row['gross earnings']),
       cleaning_fee: parseMoney(row['cleaning fee']),
       pet_fee: parseMoney(row['pet fee']),
       net_payout: parseMoney(row['amount']),
@@ -60,7 +59,6 @@ function parseVrboCsv(text) {
       end_date: checkout || checkin,
       guest_name: row['guest name'] || row['guest'] || '',
       confirmation_code: row['reservation id'] || row['confirmation'] || '',
-      gross_amount: parseMoney(row['rental amount'] || row['gross'] || row['total']),
       cleaning_fee: parseMoney(row['cleaning fee'] || row['cleaning']),
       pet_fee: parseMoney(row['pet fee'] || row['pet']),
       net_payout: parseMoney(row['owner payout'] || row['net'] || row['payout']),
@@ -330,6 +328,8 @@ function ReservationsTab({ reservations, years, yearFilter, setYearFilter, csvSo
 function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners, assignments, updateAssignment, ensureAssignment, addCleaner, deleteCleaner, updateCleaner }) {
   const [newCleanerName, setNewCleanerName] = useState('')
   const [showCleaners, setShowCleaners] = useState(false)
+  const [showPast, setShowPast] = useState(false)
+  const today = new Date().toISOString().slice(0, 10)
 
   async function handleCleanerChange(reservationId, checkoutDate, cleanerId) {
     const asgn = await ensureAssignment(reservationId, checkoutDate)
@@ -378,9 +378,19 @@ function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners,
 
       {reservations.length === 0 ? (
         <p style={{ color: 'var(--color-muted)' }}>No reservations for {yearFilter}.</p>
-      ) : (
+      ) : (() => {
+        const upcoming = reservations.filter(r => r.end_date >= today)
+        const past = reservations.filter(r => r.end_date < today)
+        const visible = showPast ? reservations : upcoming
+        return (
+        <>
+          {past.length > 0 && (
+            <button onClick={() => setShowPast(s => !s)} style={{ marginBottom: 16, padding: '7px 16px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-card)', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--color-text)' }}>
+              {showPast ? 'Hide past cleaning schedule' : `Show past cleaning schedule (${past.length})`}
+            </button>
+          )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {reservations.map(r => {
+          {visible.map(r => {
             const asgn = assignments.find(a => a.reservation_id === r.id)
             const nextCheckin = reservations
               .filter(x => x.start_date > r.end_date)
@@ -436,7 +446,9 @@ function CleaningTab({ reservations, years, yearFilter, setYearFilter, cleaners,
             )
           })}
         </div>
-      )}
+        </>
+        )
+      })()}
     </>
   )
 }
