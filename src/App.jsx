@@ -16,6 +16,7 @@ import Photos from './pages/admin/Photos'
 import AdminGiveaway from './pages/admin/Giveaway'
 import Stats from './pages/admin/Stats'
 import Reservations from './pages/admin/Reservations'
+import Cleaning from './pages/admin/Cleaning'
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="giveaway" element={<AdminGiveaway />} />
           <Route path="stats" element={<Stats />} />
           <Route path="reservations" element={<Reservations />} />
+          <Route path="cleaning" element={<Cleaning />} />
         </Route>
       </Routes>
     </BrowserRouter>
