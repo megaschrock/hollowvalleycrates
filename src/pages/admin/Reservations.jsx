@@ -24,19 +24,21 @@ function parseAirbnbCsv(text) {
     const cols = splitCsvLine(line)
     const row = {}
     headers.forEach((h, i) => row[h] = (cols[i] || '').replace(/"/g, '').trim())
-    const checkin = parseDate(row['start date'] || row['check-in'] || row['checkin'])
-    const checkout = parseDate(row['end date'] || row['check-out'] || row['checkout'])
+    // Only process Reservation rows, skip Payout and other types
+    if (row['type'] !== 'Reservation') return null
+    const checkin = parseDate(row['start date'])
+    const checkout = parseDate(row['end date'])
     if (!checkin) return null
     return {
       source: 'airbnb',
       start_date: checkin,
       end_date: checkout || checkin,
-      guest_name: row['guest'] || row['guest name'] || '',
-      confirmation_code: row['confirmation code'] || row['reservation code'] || '',
-      gross_amount: parseMoney(row['amount'] || row['total'] || row['gross earnings']),
+      guest_name: row['guest'] || '',
+      confirmation_code: row['confirmation code'] || '',
+      gross_amount: parseMoney(row['gross earnings']),
       cleaning_fee: parseMoney(row['cleaning fee']),
       pet_fee: parseMoney(row['pet fee']),
-      net_payout: parseMoney(row['net'] || row['payout'] || row['you earn'] || row['amount you earn']),
+      net_payout: parseMoney(row['amount']),
       nights: parseInt(row['nights'] || '0') || null,
     }
   }).filter(Boolean)
