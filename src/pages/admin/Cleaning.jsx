@@ -194,8 +194,8 @@ export default function Cleaning() {
                       style={{ ...inputStyle, maxWidth: '100%', boxSizing: 'border-box' }} />
                   </div>
 
-                  {/* Notes + checkboxes row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'end', marginBottom: 8 }}>
+                  {/* Notes + Pet row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end', marginBottom: 8 }}>
                     <div>
                       <div style={label}>Notes</div>
                       <input defaultValue={asgn?.notes || ''} onBlur={e => handleField(r.id, r.end_date, 'notes', e.target.value)} style={inputStyle} placeholder="Notes…" />
@@ -206,16 +206,10 @@ export default function Cleaning() {
                         style={{ width: 16, height: 16, accentColor: '#c0392b', cursor: 'pointer' }} />
                       Pet
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)', paddingBottom: 2 }}>
-                      <input type="checkbox" checked={asgn?.paid || false}
-                        onChange={e => handleField(r.id, r.end_date, 'paid', e.target.checked)}
-                        style={{ width: 16, height: 16, accentColor: '#1a5c3a', cursor: 'pointer' }} />
-                      Paid
-                    </label>
                   </div>
 
-                  {/* Owner-donated clean */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Owner-donated clean + Paid */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)' }}>
                       <input type="checkbox" checked={!!(asgn?.owner_cost > 0) || asgn?.owner_donated || false}
                         onChange={e => handleField(r.id, r.end_date, 'owner_donated', e.target.checked)}
@@ -241,6 +235,12 @@ export default function Cleaning() {
                         Owner paid ${Number(asgn.owner_cost).toFixed(2)}
                       </span>
                     )}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)', marginLeft: 'auto' }}>
+                      <input type="checkbox" checked={asgn?.paid || false}
+                        onChange={e => handleField(r.id, r.end_date, 'paid', e.target.checked)}
+                        style={{ width: 16, height: 16, accentColor: '#1a5c3a', cursor: 'pointer' }} />
+                      Paid
+                    </label>
                   </div>
                 </div>
               )
