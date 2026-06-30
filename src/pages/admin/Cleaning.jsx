@@ -152,7 +152,7 @@ export default function Cleaning() {
               const guestLabel = r.guest_name || 'Upcoming Guest'
 
               return (
-                <div key={r.id} style={{ ...card, padding: '12px 14px', borderColor: isSameDayFlip ? '#c0392b' : 'var(--color-border)' }}>
+                <div key={r.id} style={{ ...card, padding: '12px 10px', borderColor: isSameDayFlip ? '#c0392b' : 'var(--color-border)' }}>
                   {/* Card header */}
                   <div style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 1, flexWrap: 'wrap' }}>
@@ -188,12 +188,10 @@ export default function Cleaning() {
                       </div>
                     </div>
                     <div style={label}>Schedule date</div>
-                    <div style={{ width: '100%', overflow: 'hidden' }}>
-                      <input type="date" min={cleaningMin} max={cleaningMax}
-                        value={asgn?.scheduled_date || r.end_date || ''}
-                        onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                        style={{ ...inputStyle, width: '100%', display: 'block' }} />
-                    </div>
+                    <input type="date" min={cleaningMin} max={cleaningMax}
+                      value={asgn?.scheduled_date || r.end_date || ''}
+                      onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
+                      style={{ ...inputStyle, fontSize: '0.75rem', padding: '4px 6px', display: 'block', width: '100%' }} />
                   </div>
 
                   {/* Notes + Pet row */}
