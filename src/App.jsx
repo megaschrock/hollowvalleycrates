@@ -16,6 +16,10 @@ import Photos from './pages/admin/Photos'
 import AdminGiveaway from './pages/admin/Giveaway'
 import Reservations from './pages/admin/Reservations'
 import Cleaning from './pages/admin/Cleaning'
+import Ownership from './pages/admin/Ownership'
+import Objectives from './pages/admin/Objectives'
+import Meetings from './pages/admin/Meetings'
+import Meeting from './pages/admin/Meeting'
 
 export default function App() {
   return (
@@ -29,6 +33,10 @@ export default function App() {
           path="/admin"
           element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}
         >
+          <Route path="ownership" element={<Ownership />} />
+          <Route path="objectives" element={<Objectives />} />
+          <Route path="meetings" element={<Meetings />} />
+          <Route path="meetings/:id" element={<Meeting />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="content" element={<Content />} />
           <Route path="pricing" element={<Pricing />} />
