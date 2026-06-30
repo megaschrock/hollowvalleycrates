@@ -6,6 +6,12 @@ function fmtDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAYS = ['sun','mon','tue','wed','thu','fri','sat']
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -116,21 +122,51 @@ export default function Bookings() {
     setSelStart(null); setSelEnd(null); setSelectingEnd(false); setAction(null); setSavedMsg('')
   }
 
-  function getEventsForDate(dateStr) {
-    const events = []
-    for (const inq of inquiries) {
-      if (inq.checkin <= dateStr && inq.checkout > dateStr)
-        events.push({ type: 'inquiry', label: `${inq.first_name} ${inq.last_name}` })
-    }
+  function computeBarsForDate(dateStr, col, dayOfMonth) {
+    const result = []
+
     for (const block of icalBlocks) {
-      if (block.start_date <= dateStr && block.end_date >= dateStr)
-        events.push({ type: block.source === 'airbnb' ? 'airbnb' : 'vrbo', label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO' })
+      const start = block.start_date
+      const end = addDays(block.end_date, 1) // checkout day
+      if (dateStr < start || dateStr > end) continue
+      const pos = dateStr === start ? 'start' : dateStr === end ? 'end' : 'middle'
+      const showLabel = dateStr === start || (pos === 'middle' && (col === 0 || dayOfMonth === 1))
+      result.push({
+        id: `ical-${block.source}-${block.start_date}`,
+        type: block.source === 'airbnb' ? 'airbnb' : 'vrbo',
+        label: block.source === 'airbnb' ? 'Airbnb' : 'VRBO',
+        start, pos, showLabel,
+      })
     }
+
+    for (const inq of inquiries) {
+      if (!inq.checkin || !inq.checkout) continue
+      if (dateStr < inq.checkin || dateStr > inq.checkout) continue
+      const pos = dateStr === inq.checkin ? 'start' : dateStr === inq.checkout ? 'end' : 'middle'
+      const showLabel = dateStr === inq.checkin || (pos === 'middle' && (col === 0 || dayOfMonth === 1))
+      result.push({
+        id: `inq-${inq.id}`,
+        type: inq.status === 'Confirmed' ? 'booking' : 'inquiry',
+        label: `${inq.first_name} ${inq.last_name}`,
+        start: inq.checkin, pos, showLabel,
+      })
+    }
+
     for (const block of blockRows) {
-      if (block.start_date <= dateStr && block.end_date >= dateStr)
-        events.push({ type: 'manual', label: block.reason || 'Hold' })
+      const start = block.start_date
+      const end = addDays(block.end_date, 1)
+      if (dateStr < start || dateStr > end) continue
+      const pos = dateStr === start ? 'start' : dateStr === end ? 'end' : 'middle'
+      const showLabel = dateStr === start || (pos === 'middle' && (col === 0 || dayOfMonth === 1))
+      result.push({
+        id: `manual-${block.id}`,
+        type: 'manual',
+        label: block.reason || 'Hold',
+        start, pos, showLabel,
+      })
     }
-    return events
+
+    return result.sort((a, b) => a.start.localeCompare(b.start))
   }
 
   function isInSelRange(dateStr) {
@@ -243,11 +279,13 @@ export default function Bookings() {
               {Array(firstDay).fill(null).map((_, i) => <div key={`e${i}`} className="admin-cal-cell" style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', minHeight: 80 }} />)}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
                 const dateStr = `${monthStr}-${String(d).padStart(2, '0')}`
-                const events = getEventsForDate(dateStr)
-                const isStart = dateStr === selStart
-                const isEnd = dateStr === selEnd || (selectingEnd && dateStr === hoverDate && hoverDate > selStart)
+                const col = (firstDay + d - 1) % 7
+                const bars = computeBarsForDate(dateStr, col, d)
+                const isSelStart = dateStr === selStart
+                const isSelEnd = dateStr === selEnd || (selectingEnd && dateStr === hoverDate && hoverDate > selStart)
                 const inRange = isInSelRange(dateStr)
                 const rate = getRateForDate(dateStr)
+                const isSel = isSelStart || isSelEnd
 
                 return (
                   <div
@@ -257,24 +295,49 @@ export default function Bookings() {
                     onMouseEnter={() => selectingEnd && setHoverDate(dateStr)}
                     onMouseLeave={() => selectingEnd && setHoverDate(null)}
                     style={{
+                      position: 'relative',
                       borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)',
                       minHeight: 80, padding: '6px 8px', cursor: 'pointer',
-                      background: isStart || isEnd ? 'var(--color-primary)' : inRange ? 'rgba(44,74,46,0.08)' : '#fff',
+                      background: isSel ? 'var(--color-primary)' : inRange ? 'rgba(44,74,46,0.08)' : '#fff',
                       transition: 'background 0.1s',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                      <span className="admin-cal-cell-label" style={{ fontSize: '0.8rem', fontWeight: 600, color: isStart || isEnd ? '#fff' : 'var(--color-text)' }}>{d}</span>
-                      {rate && <span className="admin-cal-cell-rate" style={{ fontSize: '0.65rem', color: isStart || isEnd ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4, position: 'relative', zIndex: 2 }}>
+                      <span className="admin-cal-cell-label" style={{ fontSize: '0.8rem', fontWeight: 600, color: isSel ? '#fff' : 'var(--color-text)' }}>{d}</span>
+                      {rate && <span className="admin-cal-cell-rate" style={{ fontSize: '0.65rem', color: isSel ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
                     </div>
-                    {events.map((ev, ei) => (
-                      <div key={ei} className="admin-cal-cell-event" style={{
-                        fontSize: '0.65rem', fontWeight: 500, padding: '1px 4px', borderRadius: 2, marginBottom: 2,
-                        background: isStart || isEnd ? 'rgba(255,255,255,0.25)' : eventColors[ev.type].bg,
-                        color: isStart || isEnd ? '#fff' : eventColors[ev.type].color,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{ev.label}</div>
-                    ))}
+                    {!isSel && bars.map((bar, bi) => {
+                      const colors = eventColors[bar.type]
+                      const isBarStart = bar.pos === 'start'
+                      const isBarEnd = bar.pos === 'end'
+                      return (
+                        <div key={bar.id} className="admin-cal-cell-event" style={{
+                          position: 'absolute',
+                          top: 26 + bi * 16,
+                          left: isBarStart ? '50%' : 0,
+                          right: isBarEnd ? '50%' : 0,
+                          height: 14,
+                          background: colors.bg,
+                          borderRadius: isBarStart ? '7px 0 0 7px' : isBarEnd ? '0 7px 7px 0' : 0,
+                          zIndex: 1,
+                          overflow: 'hidden',
+                        }}>
+                          {bar.showLabel && (
+                            <span style={{
+                              position: 'absolute',
+                              left: isBarStart ? 8 : 4,
+                              top: 0,
+                              lineHeight: '14px',
+                              fontSize: '0.58rem',
+                              fontWeight: 700,
+                              color: colors.color,
+                              whiteSpace: 'nowrap',
+                              letterSpacing: '0.02em',
+                            }}>{bar.label}</span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}
