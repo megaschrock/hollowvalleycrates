@@ -188,10 +188,12 @@ export default function Cleaning() {
                       </div>
                     </div>
                     <div style={label}>Schedule date</div>
-                    <input type="date" min={cleaningMin} max={cleaningMax}
-                      value={asgn?.scheduled_date || r.end_date || ''}
-                      onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                      style={{ ...inputStyle, fontSize: '0.75rem', padding: '4px 6px', display: 'block', width: '100%' }} />
+                    <div style={{ position: 'relative', height: 34 }}>
+                      <input type="date" min={cleaningMin} max={cleaningMax}
+                        value={asgn?.scheduled_date || r.end_date || ''}
+                        onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
+                        style={{ ...inputStyle, position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                    </div>
                   </div>
 
                   {/* Notes + Pet row */}
