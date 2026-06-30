@@ -83,7 +83,7 @@ export default async function handler(req, context) {
               summary: e.summary || '',
             }
           })
-          await fetch(`${supabaseUrl}/rest/v1/reservations`, {
+          await fetch(`${supabaseUrl}/rest/v1/reservations?on_conflict=source,start_date`, {
             method: 'POST',
             headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
             body: JSON.stringify(reservationRows),
