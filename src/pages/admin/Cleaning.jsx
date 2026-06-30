@@ -180,16 +180,18 @@ export default function Cleaning() {
                   </div>
 
                   {/* Available window + schedule date */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', marginBottom: 8, alignItems: 'end' }}>
-                    <div style={label}>Available to clean</div>
-                    <div style={label}>Schedule date</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }}>
-                      {isSameDayFlip ? fmtDate(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`}
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', marginBottom: 6, flexWrap: 'wrap' }}>
+                      <div style={label}>Available to clean</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }}>
+                        {isSameDayFlip ? fmtDate(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`}
+                      </div>
                     </div>
+                    <div style={label}>Schedule date</div>
                     <input type="date" min={cleaningMin} max={cleaningMax}
                       value={asgn?.scheduled_date || r.end_date || ''}
                       onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                      style={{ ...inputStyle, minWidth: 0, width: '100%', boxSizing: 'border-box' }} />
+                      style={{ ...inputStyle, maxWidth: '100%', boxSizing: 'border-box' }} />
                   </div>
 
                   {/* Notes + checkboxes row */}
