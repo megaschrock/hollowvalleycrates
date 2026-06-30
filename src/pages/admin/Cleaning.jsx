@@ -84,7 +84,7 @@ export default function Cleaning() {
   const years = [...new Set(reservations.map(r => yearOf(r.start_date)))].sort((a, b) => b - a)
   if (!years.includes(new Date().getFullYear())) years.unshift(new Date().getFullYear())
   const filteredRes = reservations.filter(r => yearOf(r.start_date) === yearFilter)
-    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+    .sort((a, b) => a.start_date.localeCompare(b.start_date))
 
   if (loading) return <div style={{ color: 'var(--color-muted)', padding: 32 }}>Loading…</div>
 
