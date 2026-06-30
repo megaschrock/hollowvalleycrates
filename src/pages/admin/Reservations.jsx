@@ -319,9 +319,9 @@ function ReservationsTab({ reservations, years, yearFilter, setYearFilter, csvSo
                   <EditCell value={r.email} onSave={v => updateReservation(r.id, 'email', v)} width={160} />
                   <EditCell value={r.phone} onSave={v => updateReservation(r.id, 'phone', v)} width={120} />
                   <EditCell value={r.gross_amount} type="number" onSave={v => updateReservation(r.id, 'gross_amount', v ? parseFloat(v) : null)} width={90} prefix="$" />
-                  <td style={{ padding: '10px 14px', color: 'var(--color-text)' }}>{r.cleaning_fee != null ? `$${Number(r.cleaning_fee).toFixed(2)}` : '—'}</td>
-                  <td style={{ padding: '10px 14px', color: 'var(--color-text)' }}>{r.pet_fee != null ? `$${Number(r.pet_fee).toFixed(2)}` : '—'}</td>
-                  <td style={{ padding: '10px 14px', color: 'var(--color-text)' }}>{r.net_payout != null ? `$${Number(r.net_payout).toFixed(2)}` : '—'}</td>
+                  <EditCell value={r.cleaning_fee} type="number" onSave={v => updateReservation(r.id, 'cleaning_fee', v ? parseFloat(v) : null)} width={90} prefix="$" />
+                  <EditCell value={r.pet_fee} type="number" onSave={v => updateReservation(r.id, 'pet_fee', v ? parseFloat(v) : null)} width={90} prefix="$" />
+                  <EditCell value={r.net_payout} type="number" onSave={v => updateReservation(r.id, 'net_payout', v ? parseFloat(v) : null)} width={100} prefix="$" />
                   <td style={{ padding: '10px 14px', color: 'var(--color-muted)', fontSize: '0.75rem' }}>{r.confirmation_code || '—'}</td>
                 </tr>
               ))}

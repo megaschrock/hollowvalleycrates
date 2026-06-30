@@ -192,8 +192,8 @@ export default function Cleaning() {
                       style={{ ...inputStyle, minWidth: 0, width: '100%', boxSizing: 'border-box' }} />
                   </div>
 
-                  {/* Notes + Pet + Paid row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'end' }}>
+                  {/* Notes + checkboxes row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'end', marginBottom: 8 }}>
                     <div>
                       <div style={label}>Notes</div>
                       <input defaultValue={asgn?.notes || ''} onBlur={e => handleField(r.id, r.end_date, 'notes', e.target.value)} style={inputStyle} placeholder="Notes…" />
@@ -210,6 +210,35 @@ export default function Cleaning() {
                         style={{ width: 16, height: 16, accentColor: '#1a5c3a', cursor: 'pointer' }} />
                       Paid
                     </label>
+                  </div>
+
+                  {/* Owner-donated clean */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)' }}>
+                      <input type="checkbox" checked={!!(asgn?.owner_cost > 0) || asgn?.owner_donated || false}
+                        onChange={e => handleField(r.id, r.end_date, 'owner_donated', e.target.checked)}
+                        style={{ width: 16, height: 16, accentColor: '#8B6914', cursor: 'pointer' }} />
+                      Owner donated clean
+                    </label>
+                    {(asgn?.owner_donated || asgn?.owner_cost > 0) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Cost"
+                          defaultValue={asgn?.owner_cost || ''}
+                          onBlur={e => handleField(r.id, r.end_date, 'owner_cost', e.target.value ? parseFloat(e.target.value) : null)}
+                          style={{ ...inputStyle, width: 90 }}
+                        />
+                      </div>
+                    )}
+                    {asgn?.owner_cost > 0 && (
+                      <span style={{ fontSize: '0.75rem', color: '#8B6914', background: 'rgba(139,105,20,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
+                        Owner paid ${Number(asgn.owner_cost).toFixed(2)}
+                      </span>
+                    )}
                   </div>
                 </div>
               )

@@ -21,19 +21,22 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [reservations, setReservations] = useState([])
   const [inquiries, setInquiries] = useState([])
+  const [cleaningAssignments, setCleaningAssignments] = useState([])
   const [popupEnabled, setPopupEnabled] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
     async function load() {
-      const [{ data: res }, { data: inqs }, { data: settings }] = await Promise.all([
+      const [{ data: res }, { data: inqs }, { data: settings }, { data: cleans }] = await Promise.all([
         supabase.from('reservations').select('source,start_date,end_date,nights,net_payout,gross_amount,cleaning_fee,pet_fee,guest_name'),
         supabase.from('inquiries').select('submitted_at,status,checkin,checkout,adults,children,pets'),
         supabase.from('settings').select('popup_enabled,last_ical_refresh').eq('id', 1).single(),
+        supabase.from('cleaning_assignments').select('owner_donated,owner_cost,scheduled_date'),
       ])
       setReservations(res || [])
       setInquiries(inqs || [])
+      setCleaningAssignments(cleans || [])
       setPopupEnabled(settings?.popup_enabled || false)
       setLastRefresh(settings?.last_ical_refresh || null)
       setLoading(false)
@@ -74,6 +77,13 @@ export default function Dashboard() {
   const totalPetFee = yearRes.reduce((s, r) => s + (r.pet_fee || 0), 0)
   const petStays = yearRes.filter(r => r.pet_fee != null && r.pet_fee > 0).length
   const petPct = yearRes.length > 0 ? Math.round((petStays / yearRes.length) * 100) : 0
+
+  // Owner-donated cleans for selected year
+  const yearDonatedCleans = cleaningAssignments.filter(a =>
+    (a.owner_donated || a.owner_cost > 0) &&
+    a.scheduled_date && new Date(a.scheduled_date + 'T12:00:00').getFullYear() === selectedYear
+  )
+  const totalOwnerCleanCost = yearDonatedCleans.reduce((s, a) => s + (a.owner_cost || 0), 0)
 
   const alos = yearRes.length > 0
     ? (yearRes.reduce((s, r) => s + (r.nights || 0), 0) / yearRes.length).toFixed(1)
@@ -240,10 +250,17 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-        {(totalCleaning > 0 || totalPetFee > 0) && (
+        {(totalCleaning > 0 || totalPetFee > 0 || yearDonatedCleans.length > 0) && (
           <div style={{ marginTop: 16, borderTop: '1px solid var(--color-border)', paddingTop: 14, display: 'flex', gap: 32, flexWrap: 'wrap' }}>
             {totalCleaning > 0 && <MiniStat label="Cleaning Fees" value={fmt$(totalCleaning)} />}
             {totalPetFee > 0 && <MiniStat label="Pet Fees" value={fmt$(totalPetFee)} sub={`${petStays} of ${yearRes.length} stays (${petPct}%)`} />}
+            {yearDonatedCleans.length > 0 && (
+              <MiniStat
+                label="Owner Donated Cleans"
+                value={yearDonatedCleans.length}
+                sub={totalOwnerCleanCost > 0 ? `${fmt$(totalOwnerCleanCost)} out of pocket` : undefined}
+              />
+            )}
           </div>
         )}
       </div>
