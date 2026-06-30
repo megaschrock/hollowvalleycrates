@@ -188,11 +188,16 @@ export default function Cleaning() {
                       </div>
                     </div>
                     <div style={label}>Schedule date</div>
-                    <div style={{ position: 'relative', height: 34 }}>
+                    <div style={{ position: 'relative', ...inputStyle, display: 'flex', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--color-text)' }}>
+                        {asgn?.scheduled_date || r.end_date
+                          ? fmtShort(asgn?.scheduled_date || r.end_date)
+                          : 'Select date'}
+                      </span>
                       <input type="date" min={cleaningMin} max={cleaningMax}
                         value={asgn?.scheduled_date || r.end_date || ''}
                         onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                        style={{ ...inputStyle, position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
                     </div>
                   </div>
 
