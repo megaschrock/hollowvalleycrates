@@ -306,9 +306,6 @@ export default function Bookings() {
                       <span className="admin-cal-cell-label" style={{ fontSize: '0.8rem', fontWeight: 600, color: isSel ? '#fff' : 'var(--color-text)' }}>{d}</span>
                       {rate && <span className="admin-cal-cell-rate" style={{ fontSize: '0.65rem', color: isSel ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
                     </div>
-                    {!isSel && bars.some(b => b.pos === 'end') && bars.some(b => b.pos === 'start') && (
-                      <span style={{ position: 'absolute', bottom: 4, left: 5, fontSize: '0.52rem', fontWeight: 700, color: '#c0392b', letterSpacing: '0.04em', textTransform: 'uppercase', zIndex: 3 }}>Same day flip</span>
-                    )}
                     {!isSel && (() => {
                       // Pair 'end' (left-half) and 'start' (right-half) bars onto the same row
                       const ends = bars.filter(b => b.pos === 'end')
