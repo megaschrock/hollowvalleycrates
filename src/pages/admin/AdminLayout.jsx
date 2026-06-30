@@ -8,6 +8,8 @@ const navItems = [
   { to: '/admin/bookings', label: 'Calendar' },
   { to: '/admin/pricing', label: 'Standard Rates' },
   { to: '/admin/stats', label: 'Stats' },
+  { to: '/admin/reservations', label: 'Reservations' },
+  { to: '/admin/cleaning', label: 'Cleaning' },
   { to: '/admin/content', label: 'Content' },
   { to: '/admin/photos', label: 'Photos' },
   { to: '/admin/giveaway', label: 'Giveaway' },
