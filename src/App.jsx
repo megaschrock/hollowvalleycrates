@@ -9,6 +9,7 @@ import AdminLayout from './pages/admin/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import Content from './pages/admin/Content'
 import Pricing from './pages/admin/Pricing'
+import Calendar from './pages/admin/Calendar'
 import Inquiries from './pages/admin/Inquiries'
 import Bookings from './pages/admin/Bookings'
 import Photos from './pages/admin/Photos'
@@ -31,7 +32,8 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="content" element={<Content />} />
           <Route path="pricing" element={<Pricing />} />
-          <Route path="calendar" element={<Navigate to="/admin/pricing" replace />} />
+          <Route path="calendar" element={<Navigate to="/admin/connections" replace />} />
+          <Route path="connections" element={<Calendar />} />
           <Route path="stats" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="inquiries" element={<Inquiries />} />
           <Route path="bookings" element={<Bookings />} />

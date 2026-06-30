@@ -12,6 +12,7 @@ const navItems = [
   { to: '/admin/content', label: 'Content' },
   { to: '/admin/photos', label: 'Photos' },
   { to: '/admin/giveaway', label: 'Promotions' },
+  { to: '/admin/connections', label: 'Connections' },
 ]
 
 export default function AdminLayout() {
