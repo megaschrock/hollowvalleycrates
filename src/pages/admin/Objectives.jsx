@@ -100,7 +100,7 @@ export default function ActionItems() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 36 }}>Action Items</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 36 }}>Objectives & To-Dos</h1>
 
       {/* ── Objectives ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 48 }}>
