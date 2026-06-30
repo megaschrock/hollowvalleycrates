@@ -225,7 +225,11 @@ export default function Stats() {
         {(totalCleaning > 0 || totalPetFee > 0) && (
           <div style={{ marginTop: 16, borderTop: '1px solid var(--color-border)', paddingTop: 14, display: 'flex', gap: 32, flexWrap: 'wrap' }}>
             {totalCleaning > 0 && <MiniStat label="Cleaning Fees" value={fmt$(totalCleaning)} />}
+<<<<<<< HEAD
             {totalPetFee > 0 && <MiniStat label="Pet Fees" value={fmt$(totalPetFee)} sub={`${petStays} of ${yearRes.length} stays (${petPct}%)`} />}
+=======
+            {totalPetFee > 0 && <MiniStat label="Pet Fees" value={fmt$(totalPetFee)} />}
+>>>>>>> 30dab5e (Rebuild Stats page with reservation-based KPIs, ADR, RevPAR, monthly charts)
           </div>
         )}
       </div>
