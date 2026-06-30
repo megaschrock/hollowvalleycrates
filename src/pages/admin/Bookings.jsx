@@ -306,38 +306,55 @@ export default function Bookings() {
                       <span className="admin-cal-cell-label" style={{ fontSize: '0.8rem', fontWeight: 600, color: isSel ? '#fff' : 'var(--color-text)' }}>{d}</span>
                       {rate && <span className="admin-cal-cell-rate" style={{ fontSize: '0.65rem', color: isSel ? 'rgba(255,255,255,0.8)' : 'var(--color-muted)' }}>${rate}</span>}
                     </div>
-                    {!isSel && bars.map((bar, bi) => {
-                      const colors = eventColors[bar.type]
-                      const isBarStart = bar.pos === 'start'
-                      const isBarEnd = bar.pos === 'end'
-                      return (
-                        <div key={bar.id} className="admin-cal-cell-event" style={{
-                          position: 'absolute',
-                          top: 26 + bi * 16,
-                          left: isBarStart ? '50%' : 0,
-                          right: isBarEnd ? '50%' : 0,
-                          height: 14,
-                          background: colors.bg,
-                          borderRadius: isBarStart ? '7px 0 0 7px' : isBarEnd ? '0 7px 7px 0' : 0,
-                          zIndex: 1,
-                          overflow: 'hidden',
-                        }}>
-                          {bar.showLabel && (
-                            <span style={{
-                              position: 'absolute',
-                              left: isBarStart ? 8 : 4,
-                              top: 0,
-                              lineHeight: '14px',
-                              fontSize: '0.58rem',
-                              fontWeight: 700,
-                              color: colors.color,
-                              whiteSpace: 'nowrap',
-                              letterSpacing: '0.02em',
-                            }}>{bar.label}</span>
-                          )}
-                        </div>
-                      )
-                    })}
+                    {!isSel && (() => {
+                      // Pair 'end' (left-half) and 'start' (right-half) bars onto the same row
+                      const ends = bars.filter(b => b.pos === 'end')
+                      const starts = bars.filter(b => b.pos === 'start')
+                      const middles = bars.filter(b => b.pos === 'middle')
+                      const paired = new Set()
+                      const rowAssigned = []
+                      let row = 0
+                      for (const e of ends) {
+                        const s = starts.find(s => !paired.has(s.id))
+                        if (s) { paired.add(s.id); rowAssigned.push({ ...e, row }); rowAssigned.push({ ...s, row }); row++ }
+                        else rowAssigned.push({ ...e, row: row++ })
+                      }
+                      for (const s of starts) { if (!paired.has(s.id)) rowAssigned.push({ ...s, row: row++ }) }
+                      for (const m of middles) rowAssigned.push({ ...m, row: row++ })
+
+                      return rowAssigned.map(bar => {
+                        const colors = eventColors[bar.type]
+                        const isBarStart = bar.pos === 'start'
+                        const isBarEnd = bar.pos === 'end'
+                        return (
+                          <div key={bar.id} className="admin-cal-cell-event" style={{
+                            position: 'absolute',
+                            top: 26 + bar.row * 16,
+                            left: isBarStart ? '50%' : 0,
+                            right: isBarEnd ? '50%' : 0,
+                            height: 14,
+                            background: colors.bg,
+                            borderRadius: isBarStart ? '7px 0 0 7px' : isBarEnd ? '0 7px 7px 0' : 0,
+                            zIndex: 1,
+                            overflow: 'hidden',
+                          }}>
+                            {bar.showLabel && (
+                              <span style={{
+                                position: 'absolute',
+                                left: isBarStart ? 8 : 4,
+                                top: 0,
+                                lineHeight: '14px',
+                                fontSize: '0.58rem',
+                                fontWeight: 700,
+                                color: colors.color,
+                                whiteSpace: 'nowrap',
+                                letterSpacing: '0.02em',
+                              }}>{bar.label}</span>
+                            )}
+                          </div>
+                        )
+                      })
+                    })()}
                   </div>
                 )
               })}
