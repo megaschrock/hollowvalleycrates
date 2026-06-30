@@ -35,12 +35,12 @@ export default function AdminGiveaway() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 32 }}>Giveaway</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 32 }}>Promotions</h1>
 
       <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Popup Status</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Promotion Popup Status</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginTop: 4 }}>When enabled, the popup shows on the main page for first-time visitors.</p>
           </div>
           <button onClick={() => setForm(f => ({ ...f, popup_enabled: !f.popup_enabled }))} style={{ padding: '10px 24px', borderRadius: 100, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', border: 'none', background: form.popup_enabled ? 'var(--color-primary)' : 'var(--color-border)', color: form.popup_enabled ? '#fff' : 'var(--color-text)' }}>
@@ -68,7 +68,7 @@ export default function AdminGiveaway() {
       </div>
 
       <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', marginBottom: 8 }}>Giveaway Link</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', marginBottom: 8 }}>Promotion Link</h2>
         <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginBottom: 12 }}>Share this link — the popup always opens on arrival, regardless of the toggle above.</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <input readOnly value={GIVEAWAY_URL} style={{ ...inputStyle, flex: 1, background: 'var(--color-bg)' }} />
