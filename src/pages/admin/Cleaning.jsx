@@ -183,7 +183,7 @@ export default function Cleaning() {
                   <div style={{ marginBottom: 14 }}>
                     <div style={label}>Dates available to clean</div>
                     <div style={{ fontSize: '0.88rem', color: 'var(--color-text)', marginBottom: 8, fontWeight: 500 }}>
-                      {fmtShort(cleaningMin)} – {nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}
+                      {isSameDayFlip ? fmtDate(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`}
                     </div>
                     <div style={{ ...label, marginTop: 0 }}>Schedule date</div>
                     <input type="date" min={cleaningMin} max={cleaningMax}
