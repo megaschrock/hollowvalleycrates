@@ -69,6 +69,8 @@ export default function Stats() {
 
   const totalCleaning = yearRes.reduce((s, r) => s + (r.cleaning_fee || 0), 0)
   const totalPetFee = yearRes.reduce((s, r) => s + (r.pet_fee || 0), 0)
+  const petStays = yearRes.filter(r => r.pet_fee != null && r.pet_fee > 0).length
+  const petPct = yearRes.length > 0 ? Math.round((petStays / yearRes.length) * 100) : 0
 
   const alos = yearRes.length > 0
     ? (yearRes.reduce((s, r) => s + (r.nights || 0), 0) / yearRes.length).toFixed(1)
@@ -223,7 +225,7 @@ export default function Stats() {
         {(totalCleaning > 0 || totalPetFee > 0) && (
           <div style={{ marginTop: 16, borderTop: '1px solid var(--color-border)', paddingTop: 14, display: 'flex', gap: 32, flexWrap: 'wrap' }}>
             {totalCleaning > 0 && <MiniStat label="Cleaning Fees" value={fmt$(totalCleaning)} />}
-            {totalPetFee > 0 && <MiniStat label="Pet Fees" value={fmt$(totalPetFee)} />}
+            {totalPetFee > 0 && <MiniStat label="Pet Fees" value={fmt$(totalPetFee)} sub={`${petStays} of ${yearRes.length} stays (${petPct}%)`} />}
           </div>
         )}
       </div>
