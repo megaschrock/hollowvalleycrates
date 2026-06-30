@@ -122,3 +122,71 @@ create policy "ical_blocks_public_read" on cached_ical_blocks for select using (
 create policy "inquiries_public_insert" on inquiries for insert with check (true);
 create policy "inquiries_auth_read" on inquiries for select using (auth.role() = 'authenticated');
 create policy "inquiries_auth_update" on inquiries for update using (auth.role() = 'authenticated');
+
+-- ─── PHASE 5: OWNERSHIP OS ─────────────────────────────────────────────────
+
+alter table settings add column if not exists mission text default '';
+alter table settings add column if not exists vision text default '';
+alter table settings add column if not exists company_values jsonb default '[]'::jsonb;
+
+create table if not exists objectives (
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null,
+  description  text default '',
+  period_label text not null default 'H1 2026',
+  status       text not null default 'on_track',
+  archived     boolean default false,
+  sort_order   int default 0,
+  created_at   timestamptz default now()
+);
+
+create table if not exists meetings (
+  id           uuid primary key default gen_random_uuid(),
+  meeting_date date not null default current_date,
+  status       text not null default 'in_progress',
+  created_at   timestamptz default now()
+);
+
+create table if not exists meeting_personal_updates (
+  id          uuid primary key default gen_random_uuid(),
+  meeting_id  uuid not null references meetings(id) on delete cascade,
+  person_name text not null,
+  update_text text default '',
+  created_at  timestamptz default now()
+);
+
+create table if not exists meeting_talking_points (
+  id           uuid primary key default gen_random_uuid(),
+  meeting_id   uuid not null references meetings(id) on delete cascade,
+  content      text not null,
+  source_type  text default 'manual',
+  source_label text default '',
+  notes        text default '',
+  resolved     boolean default false,
+  sort_order   int default 0,
+  created_at   timestamptz default now()
+);
+
+create table if not exists meeting_todos (
+  id                 uuid primary key default gen_random_uuid(),
+  title              text not null,
+  assigned_to        text default '',
+  due_date           date,
+  completed          boolean default false,
+  completed_at       timestamptz,
+  created_meeting_id uuid references meetings(id),
+  notes              text default '',
+  created_at         timestamptz default now()
+);
+
+alter table objectives enable row level security;
+alter table meetings enable row level security;
+alter table meeting_personal_updates enable row level security;
+alter table meeting_talking_points enable row level security;
+alter table meeting_todos enable row level security;
+
+create policy "objectives_auth" on objectives for all using (auth.role() = 'authenticated');
+create policy "meetings_auth" on meetings for all using (auth.role() = 'authenticated');
+create policy "meeting_updates_auth" on meeting_personal_updates for all using (auth.role() = 'authenticated');
+create policy "meeting_tp_auth" on meeting_talking_points for all using (auth.role() = 'authenticated');
+create policy "meeting_todos_auth" on meeting_todos for all using (auth.role() = 'authenticated');

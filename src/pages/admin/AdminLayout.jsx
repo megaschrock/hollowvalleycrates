@@ -3,6 +3,11 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
 const navItems = [
+  { header: 'Ownership OS' },
+  { to: '/admin/ownership', label: 'Ownership' },
+  { to: '/admin/objectives', label: 'Objectives' },
+  { to: '/admin/meetings', label: 'Meetings' },
+  { header: 'Operations' },
   { to: '/admin/dashboard', label: 'Dashboard' },
   { to: '/admin/inquiries', label: 'Inquiries' },
   { to: '/admin/bookings', label: 'Calendar' },
@@ -14,6 +19,8 @@ const navItems = [
   { to: '/admin/giveaway', label: 'Promotions' },
   { to: '/admin/connections', label: 'Connections' },
 ]
+
+const navHeader = { fontSize: '0.65rem', letterSpacing: '0.13em', textTransform: 'uppercase', color: 'var(--color-muted)', padding: '14px 16px 3px', fontWeight: 700 }
 
 export default function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -40,9 +47,10 @@ export default function AdminLayout() {
           <img src="/logo.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain', marginBottom: 8 }} />
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', letterSpacing: '0.05em', color: 'var(--color-primary)' }}>HVC Admin</div>
         </div>
-        {navItems.map(item => (
-          <NavLink key={item.to} to={item.to} style={linkStyle}>{item.label}</NavLink>
-        ))}
+        {navItems.map((item, i) => item.header
+          ? <div key={i} style={navHeader}>{item.header}</div>
+          : <NavLink key={item.to} to={item.to} style={linkStyle}>{item.label}</NavLink>
+        )}
         <div style={{ marginTop: 'auto' }}>
           <NavLink to="/" style={{ display: 'block', padding: '10px 16px', fontSize: '0.875rem', color: 'var(--color-muted)', textDecoration: 'none' }}>← View Site</NavLink>
           <button onClick={logout} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 16px', fontSize: '0.875rem', color: 'var(--color-muted)', background: 'none', cursor: 'pointer' }}>Sign Out</button>
@@ -60,9 +68,10 @@ export default function AdminLayout() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={() => setMenuOpen(false)}>
           <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 240, background: 'var(--color-card)', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'var(--shadow-lg)' }}>
             <button onClick={() => setMenuOpen(false)} style={{ alignSelf: 'flex-end', fontSize: 22, marginBottom: 16, color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
-            {navItems.map(item => (
-              <NavLink key={item.to} to={item.to} style={linkStyle} onClick={() => setMenuOpen(false)}>{item.label}</NavLink>
-            ))}
+            {navItems.map((item, i) => item.header
+              ? <div key={i} style={navHeader}>{item.header}</div>
+              : <NavLink key={item.to} to={item.to} style={linkStyle} onClick={() => setMenuOpen(false)}>{item.label}</NavLink>
+            )}
             <div style={{ marginTop: 'auto' }}>
               <button onClick={logout} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 16px', fontSize: '0.875rem', color: 'var(--color-muted)', background: 'none', cursor: 'pointer' }}>Sign Out</button>
             </div>
