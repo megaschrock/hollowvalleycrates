@@ -142,6 +142,7 @@ export default function Cleaning() {
             {visible.map(r => {
               const asgn = assignments.find(a => a.reservation_id === r.id)
               const nextCheckin = reservations.find(x => x.start_date > r.end_date)?.start_date
+              const isSameDayFlip = nextCheckin === r.end_date
               const cleaningMin = r.end_date
               const cleaningMax = nextCheckin
                 ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
@@ -149,11 +150,18 @@ export default function Cleaning() {
               const guestLabel = r.guest_name || 'Upcoming Guest'
 
               return (
-                <div key={r.id} style={{ ...card, padding: '20px 24px' }}>
+                <div key={r.id} style={{ ...card, padding: '20px 24px', borderColor: isSameDayFlip ? '#c0392b' : 'var(--color-border)' }}>
                   {/* Card header */}
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--color-primary)', marginBottom: 2 }}>
-                      Cleaning after {guestLabel}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2, flexWrap: 'wrap' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--color-primary)' }}>
+                        Cleaning after {guestLabel}
+                      </div>
+                      {isSameDayFlip && (
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#c0392b', letterSpacing: '0.06em', textTransform: 'uppercase', background: 'rgba(192,57,43,0.1)', padding: '2px 7px', borderRadius: 4 }}>
+                          Same day flip
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--color-muted)' }}>
                       {fmtDate(r.start_date)} – {fmtDate(r.end_date)}
