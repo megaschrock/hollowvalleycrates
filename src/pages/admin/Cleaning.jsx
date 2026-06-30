@@ -180,20 +180,16 @@ export default function Cleaning() {
                   </div>
 
                   {/* Available window + schedule date */}
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8, alignItems: 'flex-end' }}>
-                    <div style={{ flex: '1 1 120px' }}>
-                      <div style={label}>Available to clean</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500, paddingTop: 3 }}>
-                        {isSameDayFlip ? fmtDate(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`}
-                      </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', marginBottom: 8, alignItems: 'end' }}>
+                    <div style={label}>Available to clean</div>
+                    <div style={label}>Schedule date</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }}>
+                      {isSameDayFlip ? fmtDate(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`}
                     </div>
-                    <div style={{ flex: '1 1 140px' }}>
-                      <div style={label}>Schedule date</div>
-                      <input type="date" min={cleaningMin} max={cleaningMax}
-                        value={asgn?.scheduled_date || r.end_date || ''}
-                        onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                        style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
-                    </div>
+                    <input type="date" min={cleaningMin} max={cleaningMax}
+                      value={asgn?.scheduled_date || r.end_date || ''}
+                      onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
+                      style={{ ...inputStyle, minWidth: 0, width: '100%', boxSizing: 'border-box' }} />
                   </div>
 
                   {/* Notes + Pet + Paid row */}
