@@ -141,12 +141,14 @@ export default function Cleaning() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {visible.map(r => {
               const asgn = assignments.find(a => a.reservation_id === r.id)
-              const nextCheckin = reservations.find(x => x.start_date > r.end_date)?.start_date
+              const nextCheckin = reservations.find(x => x.start_date >= r.end_date)?.start_date
               const isSameDayFlip = nextCheckin === r.end_date
               const cleaningMin = r.end_date
-              const cleaningMax = nextCheckin
-                ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
-                : new Date(new Date(r.end_date + 'T12:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10)
+              const cleaningMax = isSameDayFlip
+                ? r.end_date
+                : nextCheckin
+                  ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
+                  : new Date(new Date(r.end_date + 'T12:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10)
               const guestLabel = r.guest_name || 'Upcoming Guest'
 
               return (
