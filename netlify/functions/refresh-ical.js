@@ -72,15 +72,15 @@ export default async function handler(req, context) {
             body: JSON.stringify(blocks),
           })
 
-          // Upsert into reservations — creates skeleton rows, won't overwrite existing guest data
-          const reservationRows = blocks.map(b => {
-            const nights = Math.round((new Date(b.end_date) - new Date(b.start_date)) / 86400000)
+          // Upsert into reservations — use real checkout date (DTEND), not the shifted block date
+          const reservationRows = events.map(e => {
+            const nights = Math.round((new Date(e.end) - new Date(e.start)) / 86400000)
             return {
-              source: b.source,
-              start_date: b.start_date,
-              end_date: b.end_date,
+              source: source.key,
+              start_date: e.start,
+              end_date: e.end,
               nights,
-              summary: b.summary,
+              summary: e.summary || '',
             }
           })
           await fetch(`${supabaseUrl}/rest/v1/reservations`, {
