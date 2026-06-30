@@ -6,10 +6,12 @@ export default function Meetings() {
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
+  const [error, setError] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.from('meetings').select('*').order('meeting_date', { ascending: false }).then(({ data }) => {
+    supabase.from('meetings').select('*').order('meeting_date', { ascending: false }).then(({ data, error }) => {
+      if (error) setError('Could not load meetings. Make sure you have run the Phase 5 schema SQL in Supabase.')
       setMeetings(data || [])
       setLoading(false)
     })
@@ -17,9 +19,16 @@ export default function Meetings() {
 
   async function startMeeting() {
     setStarting(true)
-    const today = new Date().toISOString().slice(0, 10)
-    const { data } = await supabase.from('meetings').insert({ meeting_date: today, status: 'in_progress' }).select().single()
-    navigate(`/admin/meetings/${data.id}`)
+    setError(null)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const { data, error } = await supabase.from('meetings').insert({ meeting_date: today, status: 'in_progress' }).select().single()
+      if (error) throw error
+      navigate(`/admin/meetings/${data.id}`)
+    } catch (err) {
+      setError('Could not start meeting. Make sure you have run the Phase 5 schema SQL in Supabase. (' + err.message + ')')
+      setStarting(false)
+    }
   }
 
   function fmtDate(d) {
@@ -41,6 +50,12 @@ export default function Meetings() {
           {starting ? 'Starting…' : '▶ Start Meeting'}
         </button>
       </div>
+
+      {error && (
+        <div style={{ background: 'rgba(170,51,51,0.08)', border: '1px solid rgba(170,51,51,0.25)', borderRadius: 'var(--radius-md)', padding: '14px 18px', marginBottom: 24, color: '#a33', fontSize: '0.875rem' }}>
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <p style={{ color: 'var(--color-muted)' }}>Loading…</p>
