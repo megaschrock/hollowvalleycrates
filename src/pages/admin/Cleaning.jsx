@@ -35,7 +35,7 @@ export default function Cleaning() {
   async function load() {
     setLoading(true)
     const [{ data: res }, { data: cl }, { data: asgn }] = await Promise.all([
-      supabase.from('reservations').select('*').order('start_date', { ascending: false }),
+      supabase.from('reservations').select('*').order('start_date', { ascending: true }),
       supabase.from('cleaners').select('*').order('name'),
       supabase.from('cleaning_assignments').select('*'),
     ])
@@ -141,8 +141,7 @@ export default function Cleaning() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {visible.map(r => {
               const asgn = assignments.find(a => a.reservation_id === r.id)
-              const allRes = reservations.sort((a, b) => a.start_date.localeCompare(b.start_date))
-              const nextCheckin = allRes.find(x => x.start_date > r.end_date)?.start_date
+              const nextCheckin = reservations.find(x => x.start_date > r.end_date)?.start_date
               const cleaningMin = r.end_date
               const cleaningMax = nextCheckin
                 ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
