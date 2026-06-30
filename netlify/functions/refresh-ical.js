@@ -85,7 +85,7 @@ export default async function handler(req, context) {
           })
           await fetch(`${supabaseUrl}/rest/v1/reservations`, {
             method: 'POST',
-            headers: { ...headers, 'Prefer': 'resolution=ignore-duplicates' },
+            headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
             body: JSON.stringify(reservationRows),
           })
         }
