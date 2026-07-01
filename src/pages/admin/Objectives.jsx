@@ -140,7 +140,7 @@ export default function ActionItems() {
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', letterSpacing: '0.08em', color: 'var(--color-muted)', marginBottom: 10, textTransform: 'uppercase' }}>{period}</h3>
               <div style={{ display: 'grid', gap: 10 }}>
                 {objectives.filter(o => o.period_label === period).map(obj => (
-                  <ObjectiveCard key={obj.id} obj={obj} onStatusChange={updateStatus} onArchive={archiveObj} />
+                  <ObjectiveCard key={obj.id} obj={obj} onArchive={archiveObj} />
                 ))}
               </div>
             </div>
@@ -214,10 +214,9 @@ export default function ActionItems() {
   )
 }
 
-function ObjectiveCard({ obj, onStatusChange, onArchive }) {
+function ObjectiveCard({ obj, onArchive }) {
   const [confirming, setConfirming] = useState(false)
   const s = STATUS_MAP[obj.status] || STATUS_MAP.on_track
-  const others = Object.entries(STATUS_MAP).filter(([k]) => k !== obj.status)
 
   return (
     <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px 20px' }}>
@@ -230,11 +229,6 @@ function ObjectiveCard({ obj, onStatusChange, onArchive }) {
           {obj.description && <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>{obj.description}</p>}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-          {others.map(([k, st]) => (
-            <button key={k} onClick={() => onStatusChange(obj.id, k)} style={{ padding: '5px 12px', background: st.bg, color: st.color, border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}>
-              → {st.label}
-            </button>
-          ))}
           {confirming ? (
             <>
               <button onClick={() => onArchive(obj.id)} style={{ padding: '5px 12px', background: '#a33', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', cursor: 'pointer' }}>Confirm</button>
@@ -286,7 +280,6 @@ function TodoRow({ t, now, onComplete, onReopen, onDelete, done }) {
 }
 
 function currentPeriod() {
-  const m = new Date().getMonth()
-  const y = new Date().getFullYear()
-  return `${m < 6 ? 'H1' : 'H2'} ${y}`
+  const now = new Date()
+  return `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`
 }
