@@ -46,6 +46,7 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
   })
   const [hoverDate, setHoverDate] = useState(null)
   const [selectingCheckout, setSelectingCheckout] = useState(false)
+  const [showLines, setShowLines] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -164,7 +165,17 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
 
   return (
     <section id="availability" style={{ padding: 'var(--section-pad)', background: 'var(--color-card)' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <style>{`
+        .avail-inner { max-width: 720px; margin: 0 auto; }
+        @media (max-width: 768px) { .avail-inner { max-width: 100%; } }
+        .avail-cta-desktop { display: block; }
+        .avail-cta-sticky { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; padding: 12px 16px 20px; background: rgba(255,255,255,0.97); backdrop-filter: blur(6px); border-top: 1px solid var(--color-border); }
+        @media (max-width: 768px) {
+          .avail-cta-desktop { display: none; }
+          .avail-cta-sticky { display: block; }
+        }
+      `}</style>
+      <div className="avail-inner">
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,3rem)', letterSpacing: '0.04em', marginBottom: 8, textAlign: 'center' }}>Check Availability</h2>
         <p style={{ textAlign: 'center', color: 'var(--color-muted)', marginBottom: 32, fontSize: '0.9rem' }}>
           {!selectedCheckin ? 'Select your check-in date' : selectingCheckout ? 'Now select your check-out date' : 'Dates selected — fill out the form below to request booking'}
@@ -217,7 +228,7 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
                 >
                   <div style={{ fontSize: '0.85rem', fontWeight: isCheckin || isCheckout ? 600 : 400, lineHeight: 1.3 }}>{d.day}</div>
                   {d.rate && !d.blocked && !d.past && (
-                    <div style={{ fontSize: '0.6rem', opacity: isCheckin || isCheckout ? 0.8 : 0.65, letterSpacing: '0.02em' }}>${d.rate}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: isCheckin || isCheckout ? 0.8 : 0.65, letterSpacing: '0.02em' }}>${d.rate}</div>
                   )}
                   {d.blocked && (
                     <div style={{ fontSize: '0.55rem', opacity: 0.5 }}>—</div>
@@ -240,19 +251,24 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
         {/* Price summary */}
         {breakdown && (
           <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)', marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>{breakdown.nights} night{breakdown.nights > 1 ? 's' : ''}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <button onClick={() => setShowLines(s => !s)} style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, color: 'inherit' }}>
+                {breakdown.nights} night{breakdown.nights > 1 ? 's' : ''}
+                <span style={{ fontSize: '0.65rem', color: 'var(--color-muted)', marginLeft: 2 }}>{showLines ? '▲' : '▼'}</span>
+              </button>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--color-primary)' }}>${breakdown.subtotal.toLocaleString()}</span>
             </div>
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {breakdown.lines.map(l => (
-                <div key={l.date} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
-                  <span>{new Date(l.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                  <span>${l.rate}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 12, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {showLines && (
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                {breakdown.lines.map(l => (
+                  <div key={l.date} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                    <span>{new Date(l.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    <span>${l.rate}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
                 <span>Subtotal</span>
                 <span>${breakdown.subtotal.toLocaleString()}</span>
@@ -269,12 +285,21 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
               </div>
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 8 }}>Pet fee (if applicable) added at confirmation.</p>
-            <a href="#inquiry" style={{ display: 'block', textAlign: 'center', marginTop: 16, padding: '13px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', letterSpacing: '0.08em', fontWeight: 500 }}>
+            <a href="#inquiry" className="avail-cta-desktop" style={{ textAlign: 'center', marginTop: 16, padding: '13px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', letterSpacing: '0.08em', fontWeight: 500, textDecoration: 'none' }}>
               Request to Book
             </a>
           </div>
         )}
       </div>
+
+      {/* Sticky mobile CTA */}
+      {breakdown && (
+        <div className="avail-cta-sticky">
+          <a href="#inquiry" style={{ display: 'block', textAlign: 'center', padding: '14px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', fontWeight: 500, letterSpacing: '0.06em', textDecoration: 'none' }}>
+            Request to Book · {breakdown.nights} nights · ${(breakdown.subtotal + (cleaningFee || 0)).toLocaleString()}
+          </a>
+        </div>
+      )}
     </section>
   )
 }

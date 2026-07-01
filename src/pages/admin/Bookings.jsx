@@ -48,6 +48,12 @@ export default function Bookings() {
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [listFilters, setListFilters] = useState({ inquiry: true, booking: true, airbnb: true, vrbo: true, manual: true })
+  const [icalUrls, setIcalUrls] = useState({ airbnb_ical_url: '', vrbo_ical_url: '' })
+  const [lastRefresh, setLastRefresh] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [savingUrls, setSavingUrls] = useState(false)
+  const [icalCopied, setIcalCopied] = useState(false)
+  const [showIcal, setShowIcal] = useState(false)
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -59,6 +65,9 @@ export default function Bookings() {
       if (data) { const m = {}; data.forEach(r => { m[r.day_of_week] = r.rate }); setBaseRates(m) }
     })
     supabase.from('pricing_overrides').select('*').then(({ data }) => setPriceOverrides(data || []))
+    supabase.from('settings').select('airbnb_ical_url,vrbo_ical_url,last_ical_refresh').eq('id', 1).single().then(({ data: s }) => {
+      if (s) { setIcalUrls({ airbnb_ical_url: s.airbnb_ical_url || '', vrbo_ical_url: s.vrbo_ical_url || '' }); setLastRefresh(s.last_ical_refresh) }
+    })
   }, [])
 
   function getRateForDate(dateStr) {
@@ -204,6 +213,28 @@ export default function Bookings() {
     setAction(null)
   }
 
+  async function saveIcalUrls() {
+    setSavingUrls(true)
+    await supabase.from('settings').update(icalUrls).eq('id', 1)
+    setSavingUrls(false)
+  }
+
+  async function refreshIcal() {
+    setRefreshing(true)
+    try {
+      await fetch('/.netlify/functions/refresh-ical', { method: 'POST' })
+      const { data: s } = await supabase.from('settings').select('last_ical_refresh').eq('id', 1).single()
+      if (s) setLastRefresh(s.last_ical_refresh)
+    } catch {}
+    setRefreshing(false)
+  }
+
+  function copyIcalFeed() {
+    navigator.clipboard.writeText(`${window.location.origin}/calendar.ics`)
+    setIcalCopied(true)
+    setTimeout(() => setIcalCopied(false), 2000)
+  }
+
   async function addBlock() {
     if (!newBlock.start_date || !newBlock.end_date) return
     const { data } = await supabase.from('blocked_dates').insert([{ ...newBlock, created_at: new Date().toISOString() }]).select().single()
@@ -251,6 +282,8 @@ export default function Bookings() {
             .admin-cal-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             .admin-cal-grid { min-width: 560px; }
             @media (max-width: 600px) {
+              .admin-cal-wrap { overflow-x: visible !important; overflow: visible !important; }
+              .admin-cal-grid { min-width: 0 !important; width: 100%; }
               .admin-cal-cell { min-height: 54px !important; padding: 3px 4px !important; }
               .admin-cal-cell-label { font-size: 0.7rem !important; }
               .admin-cal-cell-rate { display: none !important; }
@@ -470,6 +503,48 @@ export default function Bookings() {
           </div>
         </div>
       )}
+
+      {/* iCal Connections */}
+      <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '20px 24px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', letterSpacing: '0.03em', margin: 0 }}>iCal Connections</h2>
+          <button onClick={() => setShowIcal(s => !s)} style={{ fontSize: '0.78rem', color: 'var(--color-muted)', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: 'pointer' }}>
+            {showIcal ? 'Hide ▲' : 'Configure ▼'}
+          </button>
+        </div>
+        {!showIcal && lastRefresh && (
+          <div style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: 6 }}>
+            Last sync: {new Date(lastRefresh).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+          </div>
+        )}
+        {showIcal && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'grid', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={labelStyle}>Airbnb iCal URL</label>
+                <input style={inputStyle} value={icalUrls.airbnb_ical_url} onChange={e => setIcalUrls(u => ({ ...u, airbnb_ical_url: e.target.value }))} placeholder="https://www.airbnb.com/calendar/ical/..." />
+              </div>
+              <div>
+                <label style={labelStyle}>VRBO iCal URL</label>
+                <input style={inputStyle} value={icalUrls.vrbo_ical_url} onChange={e => setIcalUrls(u => ({ ...u, vrbo_ical_url: e.target.value }))} placeholder="https://www.vrbo.com/icalendar/..." />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+              <button onClick={saveIcalUrls} disabled={savingUrls} style={btnPrimary}>{savingUrls ? 'Saving…' : 'Save URLs'}</button>
+              <button onClick={refreshIcal} disabled={refreshing} style={{ ...btnPrimary, background: 'var(--color-bg)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>{refreshing ? 'Refreshing…' : 'Sync Now'}</button>
+              {lastRefresh && <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>Last sync: {new Date(lastRefresh).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>}
+            </div>
+            <div>
+              <label style={labelStyle}>Outbound Feed URL</label>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginBottom: 8, marginTop: 0 }}>Paste into Airbnb/VRBO to block manually-held dates.</p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input readOnly style={{ ...inputStyle, flex: 1, background: 'var(--color-bg)' }} value={`${window.location.origin}/calendar.ics`} />
+                <button onClick={copyIcalFeed} style={{ ...btnPrimary, whiteSpace: 'nowrap' }}>{icalCopied ? 'Copied!' : 'Copy'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Manual Holds */}
       <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '24px' }}>

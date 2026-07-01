@@ -12,13 +12,11 @@ const navItems = [
   { to: '/admin/dashboard', label: 'Dashboard' },
   { to: '/admin/inquiries', label: 'Inquiries' },
   { to: '/admin/bookings', label: 'Calendar' },
-  { to: '/admin/pricing', label: 'Standard Rates' },
+  { to: '/admin/pricing', label: 'Pricing' },
   { to: '/admin/reservations', label: 'Reservations' },
   { to: '/admin/cleaning', label: 'Cleaning' },
-  { to: '/admin/content', label: 'Content' },
-  { to: '/admin/photos', label: 'Photos' },
+  { to: '/admin/property', label: 'Property' },
   { to: '/admin/giveaway', label: 'Promotions' },
-  { to: '/admin/connections', label: 'Connections' },
 ]
 
 const navHeader = { fontSize: '0.65rem', letterSpacing: '0.13em', textTransform: 'uppercase', color: 'var(--color-muted)', padding: '14px 16px 3px', fontWeight: 700 }

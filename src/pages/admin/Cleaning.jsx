@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 
 const card = { background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '20px 24px' }
 const inputStyle = { width: '100%', padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-body)', fontSize: '0.82rem', boxSizing: 'border-box' }
-const label = { fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4 }
+const labelSty = { fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-muted)', marginBottom: 4, display: 'block' }
 
 function fmtDate(s) {
   if (!s) return '—'
@@ -138,122 +138,150 @@ export default function Cleaning() {
               {showPast ? 'Hide past cleaning schedule' : `Show past cleaning schedule (${past.length})`}
             </button>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {visible.map(r => {
               const asgn = assignments.find(a => a.reservation_id === r.id)
-              const nextCheckin = reservations.find(x => x.start_date >= r.end_date)?.start_date
-              const isSameDayFlip = nextCheckin === r.end_date
-              const cleaningMin = r.end_date
-              const cleaningMax = isSameDayFlip
-                ? r.end_date
-                : nextCheckin
-                  ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
-                  : new Date(new Date(r.end_date + 'T12:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10)
-              const guestLabel = r.guest_name || 'Upcoming Guest'
-
               return (
-                <div key={r.id} style={{ ...card, padding: '12px 10px', borderColor: isSameDayFlip ? '#c0392b' : 'var(--color-border)' }}>
-                  {/* Card header */}
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 1, flexWrap: 'wrap' }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: 'var(--color-primary)' }}>
-                        Cleaning after {guestLabel}
-                      </div>
-                      {isSameDayFlip && (
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#c0392b', letterSpacing: '0.06em', textTransform: 'uppercase', background: 'rgba(192,57,43,0.1)', padding: '2px 7px', borderRadius: 4 }}>
-                          Same day flip
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>
-                      {fmtDate(r.start_date)} – {fmtDate(r.end_date)}
-                    </div>
-                  </div>
-
-                  {/* Cleaner picker */}
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={label}>Cleaner</div>
-                    <select value={asgn?.cleaner_id || ''} onChange={e => handleField(r.id, r.end_date, 'cleaner_id', e.target.value || null)} style={inputStyle}>
-                      <option value="">— Assign cleaner —</option>
-                      {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Available window + schedule date */}
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', marginBottom: 6, flexWrap: 'wrap' }}>
-                      <div style={label}>Available to clean</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', fontWeight: 500 }}>
-                        {isSameDayFlip ? fmtDate(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`}
-                      </div>
-                    </div>
-                    <div style={label}>Schedule date</div>
-                    <div style={{ position: 'relative', ...inputStyle, display: 'flex', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--color-text)' }}>
-                        {asgn?.scheduled_date || r.end_date
-                          ? fmtShort(asgn?.scheduled_date || r.end_date)
-                          : 'Select date'}
-                      </span>
-                      <input type="date" min={cleaningMin} max={cleaningMax}
-                        value={asgn?.scheduled_date || r.end_date || ''}
-                        onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
-                        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
-                    </div>
-                  </div>
-
-                  {/* Notes + Pet row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end', marginBottom: 8 }}>
-                    <div>
-                      <div style={label}>Notes</div>
-                      <input defaultValue={asgn?.notes || ''} onBlur={e => handleField(r.id, r.end_date, 'notes', e.target.value)} style={inputStyle} placeholder="Notes…" />
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)', paddingBottom: 2 }}>
-                      <input type="checkbox" checked={asgn?.has_pet || false}
-                        onChange={e => handleField(r.id, r.end_date, 'has_pet', e.target.checked)}
-                        style={{ width: 16, height: 16, accentColor: '#c0392b', cursor: 'pointer' }} />
-                      Pet
-                    </label>
-                  </div>
-
-                  {/* Owner-donated clean + Paid */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)' }}>
-                      <input type="checkbox" checked={!!(asgn?.owner_cost > 0) || asgn?.owner_donated || false}
-                        onChange={e => handleField(r.id, r.end_date, 'owner_donated', e.target.checked)}
-                        style={{ width: 16, height: 16, accentColor: '#8B6914', cursor: 'pointer' }} />
-                      Owner donated clean
-                    </label>
-                    {(asgn?.owner_donated || asgn?.owner_cost > 0) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>$</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Cost"
-                          defaultValue={asgn?.owner_cost || ''}
-                          onBlur={e => handleField(r.id, r.end_date, 'owner_cost', e.target.value ? parseFloat(e.target.value) : null)}
-                          style={{ ...inputStyle, width: 90 }}
-                        />
-                      </div>
-                    )}
-                    {asgn?.owner_cost > 0 && (
-                      <span style={{ fontSize: '0.75rem', color: '#8B6914', background: 'rgba(139,105,20,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
-                        Owner paid ${Number(asgn.owner_cost).toFixed(2)}
-                      </span>
-                    )}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)', marginLeft: 'auto' }}>
-                      <input type="checkbox" checked={asgn?.paid || false}
-                        onChange={e => handleField(r.id, r.end_date, 'paid', e.target.checked)}
-                        style={{ width: 16, height: 16, accentColor: '#1a5c3a', cursor: 'pointer' }} />
-                      Paid
-                    </label>
-                  </div>
-                </div>
+                <CleaningCard
+                  key={r.id}
+                  r={r}
+                  asgn={asgn}
+                  cleaners={cleaners}
+                  reservations={reservations}
+                  handleField={handleField}
+                />
               )
             })}
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+function CleaningCard({ r, asgn, cleaners, reservations, handleField }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const nextCheckin = reservations.find(x => x.id !== r.id && x.start_date >= r.end_date)?.start_date
+  const isSameDayFlip = nextCheckin === r.end_date
+  const cleaningMin = r.end_date
+  const cleaningMax = isSameDayFlip
+    ? r.end_date
+    : nextCheckin
+      ? new Date(new Date(nextCheckin + 'T12:00:00').getTime() - 86400000).toISOString().slice(0, 10)
+      : new Date(new Date(r.end_date + 'T12:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10)
+
+  const guestLabel = r.guest_name || 'Upcoming Guest'
+  const cleanerName = asgn?.cleaner_id
+    ? cleaners.find(c => String(c.id) === String(asgn.cleaner_id))?.name || ''
+    : ''
+
+  return (
+    <div style={{ background: 'var(--color-card)', border: `1px solid ${isSameDayFlip ? '#c0392b' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+      {/* Summary row */}
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{ padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, background: expanded ? 'rgba(44,74,46,0.03)' : 'transparent', userSelect: 'none' }}
+      >
+        <span style={{ fontSize: '0.62rem', color: 'var(--color-muted)', flexShrink: 0 }}>{expanded ? '▼' : '▶'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: 'var(--color-primary)' }}>{guestLabel}</span>
+            {isSameDayFlip && (
+              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#c0392b', letterSpacing: '0.06em', textTransform: 'uppercase', background: 'rgba(192,57,43,0.1)', padding: '1px 5px', borderRadius: 3 }}>Same-day flip</span>
+            )}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
+            {fmtShort(r.start_date)} – {fmtShort(r.end_date)}
+            {cleanerName ? ` · ${cleanerName}` : ' · Unassigned'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          {asgn?.has_pet && (
+            <span style={{ fontSize: '0.68rem', color: '#8B6914', background: 'rgba(139,105,20,0.1)', padding: '2px 6px', borderRadius: 3 }}>Pet</span>
+          )}
+          {asgn?.paid && (
+            <span style={{ fontSize: '0.68rem', color: '#1a5c3a', background: 'rgba(26,92,58,0.1)', padding: '2px 6px', borderRadius: 3, fontWeight: 600 }}>Paid</span>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded form */}
+      {expanded && (
+        <div style={{ padding: '14px 16px 16px', borderTop: '1px solid var(--color-border)' }}>
+          {/* Cleaner picker */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelSty}>Cleaner</label>
+            <select value={asgn?.cleaner_id || ''} onChange={e => handleField(r.id, r.end_date, 'cleaner_id', e.target.value || null)} style={inputStyle}>
+              <option value="">— Assign cleaner —</option>
+              {cleaners.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          {/* Schedule date */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelSty}>
+              Schedule date
+              <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--color-muted)', fontSize: '0.72rem', marginLeft: 6 }}>
+                (window: {isSameDayFlip ? fmtShort(cleaningMin) : `${fmtShort(cleaningMin)} – ${nextCheckin ? fmtShort(nextCheckin) : fmtShort(cleaningMax)}`})
+              </span>
+            </label>
+            <input
+              type="date"
+              min={cleaningMin}
+              max={cleaningMax}
+              value={asgn?.scheduled_date || r.end_date || ''}
+              onChange={e => handleField(r.id, r.end_date, 'scheduled_date', e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Notes + Pet */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
+            <div>
+              <label style={labelSty}>Notes</label>
+              <input defaultValue={asgn?.notes || ''} onBlur={e => handleField(r.id, r.end_date, 'notes', e.target.value)} style={inputStyle} placeholder="Notes…" />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)', paddingBottom: 2 }}>
+              <input type="checkbox" checked={asgn?.has_pet || false}
+                onChange={e => handleField(r.id, r.end_date, 'has_pet', e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#c0392b', cursor: 'pointer' }} />
+              Pet
+            </label>
+          </div>
+
+          {/* Owner-donated + Paid */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)' }}>
+              <input type="checkbox" checked={!!(asgn?.owner_cost > 0) || asgn?.owner_donated || false}
+                onChange={e => handleField(r.id, r.end_date, 'owner_donated', e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#8B6914', cursor: 'pointer' }} />
+              Owner donated clean
+            </label>
+            {(asgn?.owner_donated || asgn?.owner_cost > 0) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>$</span>
+                <input
+                  type="number" min="0" step="0.01" placeholder="Cost"
+                  defaultValue={asgn?.owner_cost || ''}
+                  onBlur={e => handleField(r.id, r.end_date, 'owner_cost', e.target.value ? parseFloat(e.target.value) : null)}
+                  style={{ ...inputStyle, width: 90 }}
+                />
+              </div>
+            )}
+            {asgn?.owner_cost > 0 && (
+              <span style={{ fontSize: '0.75rem', color: '#8B6914', background: 'rgba(139,105,20,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>
+                Owner paid ${Number(asgn.owner_cost).toFixed(2)}
+              </span>
+            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text)', marginLeft: 'auto' }}>
+              <input type="checkbox" checked={asgn?.paid || false}
+                onChange={e => handleField(r.id, r.end_date, 'paid', e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#1a5c3a', cursor: 'pointer' }} />
+              Paid
+            </label>
+          </div>
+        </div>
       )}
     </div>
   )

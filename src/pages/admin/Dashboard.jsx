@@ -129,11 +129,43 @@ export default function Dashboard() {
     pct: total > 0 ? Math.round((yearInqs.filter(i => i.status === s.label).length / total) * 100) : 0,
   }))
 
+  const tmMonth = new Date().getMonth()
+  const tmYear = new Date().getFullYear()
+  const tmRes = reservations.filter(r => yearOf(r.start_date) === tmYear && monthOf(r.start_date) === tmMonth)
+  const tmNights = tmRes.reduce((s, r) => s + (r.nights || 0), 0)
+  const tmDays = daysInMonth(tmYear, tmMonth)
+  const tmOcc = Math.round((tmNights / tmDays) * 100)
+  const tmNet = tmRes.filter(r => r.net_payout != null).reduce((s, r) => s + r.net_payout, 0)
+  const tmHasNet = tmRes.some(r => r.net_payout != null)
+
   if (loading) return <div style={{ color: 'var(--color-muted)', padding: 32 }}>Loading…</div>
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 24 }}>Dashboard</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 20 }}>Dashboard</h1>
+
+      {/* This month at a glance */}
+      <div style={{ background: 'var(--color-primary)', borderRadius: 'var(--radius-md)', padding: '20px 24px', marginBottom: 28, color: '#fff', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '16px 24px', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.65, marginBottom: 4 }}>This Month</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', letterSpacing: '0.04em', lineHeight: 1.2 }}>{MONTHS[tmMonth]}<br />{tmYear}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.65, marginBottom: 4 }}>Nights Booked</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', lineHeight: 1 }}>{tmNights}</div>
+          <div style={{ fontSize: '0.7rem', opacity: 0.65, marginTop: 3 }}>{tmOcc}% of {tmDays}</div>
+        </div>
+        {tmHasNet && (
+          <div>
+            <div style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.65, marginBottom: 4 }}>Net Revenue</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', lineHeight: 1 }}>{fmt$(tmNet)}</div>
+          </div>
+        )}
+        <div>
+          <div style={{ fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.65, marginBottom: 4 }}>Reservations</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', lineHeight: 1 }}>{tmRes.length}</div>
+        </div>
+      </div>
 
       {/* Top mini-stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 16, marginBottom: 24 }}>
@@ -162,7 +194,7 @@ export default function Dashboard() {
       <div style={{ marginBottom: 36 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', marginBottom: 12, letterSpacing: '0.03em' }}>Quick Links</h2>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {[['Content','/admin/content'],['Standard Rates','/admin/pricing'],['Inquiries','/admin/inquiries'],['Photos','/admin/photos'],['Promotions','/admin/giveaway'],['Reservations','/admin/reservations'],['Cleaning','/admin/cleaning']].map(([label, to]) => (
+          {[['Property','/admin/property'],['Pricing','/admin/pricing'],['Inquiries','/admin/inquiries'],['Promotions','/admin/giveaway'],['Reservations','/admin/reservations'],['Cleaning','/admin/cleaning']].map(([label, to]) => (
             <Link key={to} to={to} style={{ padding: '8px 18px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', color: 'var(--color-text)', background: 'var(--color-card)', textDecoration: 'none' }}>{label}</Link>
           ))}
         </div>

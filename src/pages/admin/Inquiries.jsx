@@ -42,13 +42,15 @@ export default function Inquiries() {
   }
 
   const filtered = filter === 'All' ? inquiries : inquiries.filter(i => i.status === filter)
+  const counts = { All: inquiries.length }
+  STATUSES.forEach(s => { counts[s] = inquiries.filter(i => i.status === s).length })
 
   return (
     <div>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', marginBottom: 24 }}>Inquiries</h1>
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
         {['All', ...STATUSES].map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding: '6px 16px', borderRadius: 100, fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', border: '1px solid var(--color-border)', background: filter === s ? 'var(--color-primary)' : 'var(--color-card)', color: filter === s ? '#fff' : 'var(--color-text)' }}>{s}</button>
+          <button key={s} onClick={() => setFilter(s)} style={{ padding: '6px 16px', borderRadius: 100, fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', border: '1px solid var(--color-border)', background: filter === s ? 'var(--color-primary)' : 'var(--color-card)', color: filter === s ? '#fff' : 'var(--color-text)' }}>{s}{counts[s] > 0 ? ` (${counts[s]})` : ''}</button>
         ))}
       </div>
       {loading ? <p style={{ color: 'var(--color-muted)' }}>Loading…</p> : (
