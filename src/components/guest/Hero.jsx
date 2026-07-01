@@ -1,10 +1,5 @@
-function transformUrl(url, width, quality = 80) {
-  if (!url || !url.includes('/storage/v1/object/public/')) return url
-  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + `?width=${width}&quality=${quality}`
-}
-
 export default function Hero({ settings, photos }) {
-  const heroUrl = photos.length ? transformUrl(photos[0].url, 1920, 80) : null
+  const heroUrl = photos.length ? photos[0].url : null
 
   const heroStyle = heroUrl
     ? { backgroundImage: `url(${heroUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
