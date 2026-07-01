@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 
-function transformUrl(url, width, quality = 75) {
-  if (!url || !url.includes('/storage/v1/object/public/')) return url
-  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + `?width=${width}&quality=${quality}`
-}
-
 export default function Gallery({ photos }) {
   const [lightbox, setLightbox] = useState(null)
   const [current, setCurrent] = useState(0)
@@ -40,8 +35,7 @@ export default function Gallery({ photos }) {
           <div key={photo.id} onClick={() => { setLightbox(photo); setCurrent(i) }}
             style={{ cursor: 'pointer', aspectRatio: '1/1', overflow: 'hidden', borderRadius: 'var(--radius-sm)', background: '#f0ede8' }}>
             <img
-              src={transformUrl(photo.url, 800)}
-              onError={e => { e.currentTarget.src = photo.url }}
+              src={photo.url}
               alt={photo.caption || ''}
               loading="lazy"
               decoding="async"
@@ -67,8 +61,7 @@ export default function Gallery({ photos }) {
           {photos.map(photo => (
             <div key={photo.id} style={{ flex: '0 0 85vw', scrollSnapAlign: 'start', aspectRatio: '1/1', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: '#f0ede8' }}>
               <img
-                src={transformUrl(photo.url, 900)}
-                onError={e => { e.currentTarget.src = photo.url }}
+                src={photo.url}
                 alt={photo.caption || ''}
                 loading="lazy"
                 decoding="async"
