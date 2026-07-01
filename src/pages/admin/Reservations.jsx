@@ -131,6 +131,7 @@ export default function Reservations() {
   const [importing, setImporting] = useState(false)
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear())
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showCsvImport, setShowCsvImport] = useState(false)
   const [addForm, setAddForm] = useState(BLANK_FORM)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef()
@@ -299,90 +300,115 @@ export default function Reservations() {
 
       {/* CSV Import */}
       <div style={{ ...card, marginBottom: 24 }}>
-        <div style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 12 }}>Import CSV</div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={csvSource} onChange={e => { setCsvSource(e.target.value); setCsvPreview(null); if (fileRef.current) fileRef.current.value = '' }} style={{ ...inputStyle, width: 200 }}>
-            <option value="airbnb">Airbnb — Reservations</option>
-            <option value="vrbo">VRBO — Reservations</option>
-            <option value="vrbo-deposits">VRBO — Deposit Report</option>
-          </select>
-          <a href={
-            csvSource === 'airbnb' ? 'https://www.airbnb.com/earnings/512863776/paid' :
-            csvSource === 'vrbo-deposits' ? 'https://www.vrbo.com/supply/financial-reporting?tab=bank-deposits' :
-            'https://www.vrbo.com/p/calendar/321.3384796.3957924/rail/downloadBookingDetails'
-          } target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            Get this report →
-          </a>
-          <input ref={fileRef} type="file" accept=".csv" onChange={onFileChange} style={{ fontSize: '0.82rem', color: 'var(--color-text)' }} />
-          {csvPreview && <>
-            <span style={{ fontSize: '0.82rem', color: 'var(--color-muted)' }}>{csvPreview.length} rows found</span>
-            <button onClick={importCsv} disabled={importing} style={{ padding: '6px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem' }}>
-              {importing ? 'Importing…' : 'Confirm Import'}
-            </button>
-            <button onClick={() => { setCsvPreview(null); fileRef.current.value = '' }} style={{ padding: '6px 12px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-muted)' }}>Cancel</button>
-          </>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-muted)' }}>Import CSV</div>
+          <button onClick={() => setShowCsvImport(s => !s)} style={{ fontSize: '0.78rem', color: 'var(--color-muted)', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: 'pointer' }}>
+            {showCsvImport ? 'Hide ▲' : 'Expand ▼'}
+          </button>
         </div>
-        {csvPreview && csvSource === 'vrbo-deposits' && (
-          <div style={{ marginTop: 12, overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-              <thead><tr style={{ borderBottom: '1px solid var(--color-border)' }}>{['Conf #','Guest','Net Payout'].map(h => <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>)}</tr></thead>
-              <tbody>
-                {csvPreview.slice(0, 10).map((r, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '4px 10px' }}>{r.confirmation_code}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.guest_name}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.net_payout != null ? `$${r.net_payout.toFixed(2)}` : '—'}</td>
-                  </tr>
-                ))}
-                {csvPreview.length > 10 && <tr><td colSpan={3} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {csvPreview && csvSource !== 'vrbo-deposits' && (
-          <div style={{ marginTop: 12, overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-              <thead><tr style={{ borderBottom: '1px solid var(--color-border)' }}>{['Source','Check-in','Check-out','Guest','Nights','Cleaning Fee','Pet Fee','Net','Conf#'].map(h => <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>)}</tr></thead>
-              <tbody>
-                {csvPreview.slice(0, 10).map((r, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '4px 10px' }}><SourceBadge source={r.source} /></td>
-                    <td style={{ padding: '4px 10px' }}>{fmtDate(r.start_date)}</td>
-                    <td style={{ padding: '4px 10px' }}>{fmtDate(r.end_date)}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.guest_name}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.nights}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.cleaning_fee != null ? `$${r.cleaning_fee}` : '—'}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.pet_fee != null ? `$${r.pet_fee}` : '—'}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.net_payout != null ? `$${r.net_payout}` : '—'}</td>
-                    <td style={{ padding: '4px 10px' }}>{r.confirmation_code}</td>
-                  </tr>
-                ))}
-                {csvPreview.length > 10 && <tr><td colSpan={9} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
-              </tbody>
-            </table>
+        {showCsvImport && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={csvSource} onChange={e => { setCsvSource(e.target.value); setCsvPreview(null); if (fileRef.current) fileRef.current.value = '' }} style={{ ...inputStyle, width: 200 }}>
+                <option value="airbnb">Airbnb — Reservations</option>
+                <option value="vrbo">VRBO — Reservations</option>
+                <option value="vrbo-deposits">VRBO — Deposit Report</option>
+              </select>
+              <a href={
+                csvSource === 'airbnb' ? 'https://www.airbnb.com/earnings/512863776/paid' :
+                csvSource === 'vrbo-deposits' ? 'https://www.vrbo.com/supply/financial-reporting?tab=bank-deposits' :
+                'https://www.vrbo.com/p/calendar/321.3384796.3957924/rail/downloadBookingDetails'
+              } target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                Get this report →
+              </a>
+              <input ref={fileRef} type="file" accept=".csv" onChange={onFileChange} style={{ fontSize: '0.82rem', color: 'var(--color-text)' }} />
+              {csvPreview && <>
+                <span style={{ fontSize: '0.82rem', color: 'var(--color-muted)' }}>{csvPreview.length} rows found</span>
+                <button onClick={importCsv} disabled={importing} style={{ padding: '6px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem' }}>
+                  {importing ? 'Importing…' : 'Confirm Import'}
+                </button>
+                <button onClick={() => { setCsvPreview(null); fileRef.current.value = '' }} style={{ padding: '6px 12px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-muted)' }}>Cancel</button>
+              </>}
+            </div>
+            {csvPreview && csvSource === 'vrbo-deposits' && (
+              <div style={{ marginTop: 12, overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--color-border)' }}>{['Conf #','Guest','Net Payout'].map(h => <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {csvPreview.slice(0, 10).map((r, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '4px 10px' }}>{r.confirmation_code}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.guest_name}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.net_payout != null ? `$${r.net_payout.toFixed(2)}` : '—'}</td>
+                      </tr>
+                    ))}
+                    {csvPreview.length > 10 && <tr><td colSpan={3} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {csvPreview && csvSource !== 'vrbo-deposits' && (
+              <div style={{ marginTop: 12, overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--color-border)' }}>{['Source','Check-in','Check-out','Guest','Nights','Cleaning Fee','Pet Fee','Net','Conf#'].map(h => <th key={h} style={{ textAlign: 'left', padding: '4px 10px', color: 'var(--color-muted)', fontWeight: 500 }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {csvPreview.slice(0, 10).map((r, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '4px 10px' }}><SourceBadge source={r.source} /></td>
+                        <td style={{ padding: '4px 10px' }}>{fmtDate(r.start_date)}</td>
+                        <td style={{ padding: '4px 10px' }}>{fmtDate(r.end_date)}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.guest_name}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.nights}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.cleaning_fee != null ? `$${r.cleaning_fee}` : '—'}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.pet_fee != null ? `$${r.pet_fee}` : '—'}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.net_payout != null ? `$${r.net_payout}` : '—'}</td>
+                        <td style={{ padding: '4px 10px' }}>{r.confirmation_code}</td>
+                      </tr>
+                    ))}
+                    {csvPreview.length > 10 && <tr><td colSpan={9} style={{ padding: '4px 10px', color: 'var(--color-muted)' }}>…and {csvPreview.length - 10} more</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
 
+      <style>{`
+        .res-table-wrap { display: block; }
+        .res-mobile-list { display: none; }
+        @media (max-width: 768px) {
+          .res-table-wrap { display: none; }
+          .res-mobile-list { display: flex; flex-direction: column; gap: 10px; }
+        }
+      `}</style>
+
       {filteredRes.length === 0 ? (
         <p style={{ color: 'var(--color-muted)' }}>No reservations for {yearFilter}.</p>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-          <table style={{ borderCollapse: 'collapse', fontSize: '0.82rem', whiteSpace: 'nowrap', width: '100%' }}>
-            <thead>
-              <tr style={{ background: 'var(--color-card)', borderBottom: '2px solid var(--color-border)' }}>
-                {['Source','Check-in','Check-out','Nights','Guest','Email','Phone','Gross','Cleaning','Pet','Discount','Host Fee','Net Payout','DDA','Conf #',''].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 600 }}>{h}</th>
+        <>
+          <div className="res-table-wrap" style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '0.82rem', whiteSpace: 'nowrap', width: '100%' }}>
+              <thead>
+                <tr style={{ background: 'var(--color-card)', borderBottom: '2px solid var(--color-border)' }}>
+                  {['Source','Check-in','Check-out','Nights','Guest','Email','Phone','Gross','Cleaning','Pet','Discount','Host Fee','Net Payout','DDA','Conf #',''].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRes.map((r, idx) => (
+                  <ReservationRow key={r.id} r={r} idx={idx} onUpdate={updateReservation} onDelete={deleteReservation} />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRes.map((r, idx) => (
-                <ReservationRow key={r.id} r={r} idx={idx} onUpdate={updateReservation} onDelete={deleteReservation} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+          <div className="res-mobile-list">
+            {filteredRes.map(r => (
+              <ReservationCard key={r.id} r={r} onUpdate={updateReservation} onDelete={deleteReservation} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -437,6 +463,78 @@ function SourceBadge({ source }) {
     <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: (SOURCE_COLORS[source] || '#888') + '22', color: SOURCE_COLORS[source] || 'var(--color-muted)', textTransform: 'capitalize' }}>
       {source}
     </span>
+  )
+}
+
+function ReservationCard({ r, onUpdate, onDelete }) {
+  const [expanded, setExpanded] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const nights = r.nights ?? nightsBetween(r.start_date, r.end_date)
+
+  return (
+    <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+      <div onClick={() => setExpanded(e => !e)} style={{ padding: '12px 14px', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <SourceBadge source={r.source} />
+          <span style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.guest_name || '—'}</span>
+          {r.net_payout != null && <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--color-primary)', flexShrink: 0 }}>${Math.round(r.net_payout).toLocaleString()}</span>}
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>
+          {fmtDate(r.start_date)} → {fmtDate(r.end_date)} · {nights} nights
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: '12px 14px', borderTop: '1px solid var(--color-border)', display: 'grid', gap: 10 }}>
+          {[
+            ['Guest Name', 'guest_name', 'text'],
+            ['Email', 'email', 'email'],
+            ['Phone', 'phone', 'text'],
+            ['Gross ($)', 'gross_amount', 'number'],
+            ['Cleaning Fee ($)', 'cleaning_fee', 'number'],
+            ['Pet Fee ($)', 'pet_fee', 'number'],
+            ['Discount ($)', 'discount', 'number'],
+            ['Host Fee ($)', 'host_fee', 'number'],
+            ['Net Payout ($)', 'net_payout', 'number'],
+            ['Conf #', 'confirmation_code', 'text'],
+          ].map(([lbl, field, type]) => (
+            <CardEditField key={field} label={lbl} value={r[field]} type={type}
+              onSave={v => onUpdate(r.id, field, type === 'number' ? (v !== '' && v != null ? parseFloat(v) : null) : v || null)} />
+          ))}
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.82rem', color: 'var(--color-text)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!r.entered_in_dda} onChange={e => onUpdate(r.id, 'entered_in_dda', e.target.checked)} style={{ width: 16, height: 16 }} />
+            Entered in DDA
+          </label>
+          <div>
+            {confirming ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => onDelete(r.id)} style={{ padding: '6px 12px', background: '#a33', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer' }}>Confirm Delete</button>
+                <button onClick={() => setConfirming(false)} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--color-muted)' }}>Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirming(true)} style={{ padding: '6px 12px', background: 'none', border: '1px solid #c0392b', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', color: '#c0392b' }}>Delete</button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CardEditField({ label, value, type, onSave }) {
+  const [val, setVal] = useState(value ?? '')
+  useEffect(() => { setVal(value ?? '') }, [value])
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.75rem', color: 'var(--color-muted)' }}>
+      {label}
+      <input
+        type={type}
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        onBlur={() => { if (String(val) !== String(value ?? '')) onSave(val) }}
+        style={{ ...inputStyle, padding: '7px 8px', fontSize: '0.82rem' }}
+        step={type === 'number' ? '0.01' : undefined}
+      />
+    </label>
   )
 }
 
