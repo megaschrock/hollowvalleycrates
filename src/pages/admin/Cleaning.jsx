@@ -198,7 +198,7 @@ function CleaningCard({ r, asgn, cleaners, reservations, handleField }) {
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
           {asgn?.has_pet && (
-            <span style={{ fontSize: '0.68rem', color: '#8B6914', background: 'rgba(139,105,20,0.1)', padding: '2px 6px', borderRadius: 3 }}>Pet</span>
+            <span style={{ fontSize: '1rem', lineHeight: 1 }}>🐶</span>
           )}
           {asgn?.paid && (
             <span style={{ fontSize: '0.68rem', color: '#1a5c3a', background: 'rgba(26,92,58,0.1)', padding: '2px 6px', borderRadius: 3, fontWeight: 600 }}>Paid</span>

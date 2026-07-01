@@ -288,6 +288,7 @@ export default function Bookings() {
               .admin-cal-cell-label { font-size: 0.7rem !important; }
               .admin-cal-cell-rate { display: none !important; }
               .admin-cal-cell-event { font-size: 0.55rem !important; }
+              .admin-cal-event-label { display: none !important; }
             }
           `}</style>
           <div style={{ background: '#fff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
@@ -372,7 +373,7 @@ export default function Bookings() {
                             overflow: 'hidden',
                           }}>
                             {bar.showLabel && (
-                              <span style={{
+                              <span className="admin-cal-event-label" style={{
                                 position: 'absolute',
                                 left: isBarStart ? 8 : 4,
                                 top: 0,
