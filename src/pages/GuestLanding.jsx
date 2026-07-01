@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSettings } from '../hooks/useSettings'
+import { supabase } from '../lib/supabase'
 import Hero from '../components/guest/Hero'
 import Gallery from '../components/guest/Gallery'
 import Description from '../components/guest/Description'
@@ -13,6 +14,13 @@ export default function GuestLanding({ forcePopup = false }) {
   const { settings } = useSettings()
   const [checkin, setCheckin] = useState(null)
   const [checkout, setCheckout] = useState(null)
+  const [photos, setPhotos] = useState([])
+
+  useEffect(() => {
+    supabase.from('photos').select('*').order('display_order').then(({ data }) => {
+      if (data) setPhotos(data)
+    })
+  }, [])
 
   function handleDatesSelected(ci, co) {
     setCheckin(ci)
@@ -22,13 +30,13 @@ export default function GuestLanding({ forcePopup = false }) {
   return (
     <>
       <PromoPopup settings={settings} forceOpen={forcePopup} />
-      <Hero settings={settings} />
+      <Hero settings={settings} photos={photos} />
       <AvailabilityCalendar
         onDatesSelected={handleDatesSelected}
         selectedCheckin={checkin}
         selectedCheckout={checkout}
       />
-      <Gallery />
+      <Gallery photos={photos} />
       <InquiryForm checkin={checkin} checkout={checkout} />
       <Description settings={settings} />
       <ContactSection settings={settings} />
