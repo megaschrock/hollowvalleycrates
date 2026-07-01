@@ -38,14 +38,14 @@ export default function Gallery({ photos }) {
       <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
         {photos.map((photo, i) => (
           <div key={photo.id} onClick={() => { setLightbox(photo); setCurrent(i) }}
-            style={{ cursor: 'pointer', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 'var(--radius-sm)', background: 'var(--color-card)' }}>
+            style={{ cursor: 'pointer', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 'var(--radius-sm)', background: '#f0ede8' }}>
             <img
               src={transformUrl(photo.url, 800)}
               onError={e => { e.currentTarget.src = photo.url }}
               alt={photo.caption || ''}
               loading="lazy"
               decoding="async"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.4s' }}
               onMouseOver={e => e.currentTarget.style.transform = 'scale(1.04)'}
               onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
             />
@@ -65,14 +65,14 @@ export default function Gallery({ photos }) {
           }}
         >
           {photos.map(photo => (
-            <div key={photo.id} style={{ flex: '0 0 85vw', scrollSnapAlign: 'start', aspectRatio: '4/3', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--color-card)' }}>
+            <div key={photo.id} style={{ flex: '0 0 85vw', scrollSnapAlign: 'start', aspectRatio: '4/3', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: '#f0ede8' }}>
               <img
                 src={transformUrl(photo.url, 900)}
                 onError={e => { e.currentTarget.src = photo.url }}
                 alt={photo.caption || ''}
                 loading="lazy"
                 decoding="async"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
           ))}
