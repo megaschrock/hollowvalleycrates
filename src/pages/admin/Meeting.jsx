@@ -21,9 +21,20 @@ function oneMonthOut(meetingDate) {
   return d.toISOString().slice(0, 10)
 }
 function currentPeriod() {
-  const m = new Date().getMonth()
-  const y = new Date().getFullYear()
-  return `${m < 6 ? 'H1' : 'H2'} ${y}`
+  const now = new Date()
+  return `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`
+}
+
+function nextSixQuarters() {
+  const now = new Date()
+  let y = now.getFullYear()
+  let q = Math.floor(now.getMonth() / 3) + 1
+  const result = []
+  for (let i = 0; i < 6; i++) {
+    result.push(`Q${q} ${y}`)
+    if (++q > 4) { q = 1; y++ }
+  }
+  return result
 }
 
 const inp = { width: '100%', padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', background: '#fff', color: 'var(--color-text)', boxSizing: 'border-box' }
@@ -50,7 +61,7 @@ export default function Meeting() {
 
   // Objective inline add (Step C)
   const [addingObj, setAddingObj] = useState(false)
-  const [newObj, setNewObj] = useState({ title: '', description: '', period_label: currentPeriod() })
+  const [newObj, setNewObj] = useState({ title: '', description: '', period_label: currentPeriod(), assigned_to: '' })
   const [savingObj, setSavingObj] = useState(false)
 
   // Objective inline notes (Step C)
@@ -79,8 +90,18 @@ export default function Meeting() {
       ])
       setMeeting(mtg)
       setObjectives(objs || [])
-      setTalkingPoints(tps || [])
       setMeetingTodos(mTodos || [])
+      const hasPricingTP = (tps || []).some(tp => tp.source_type === 'recurring')
+      if (!hasPricingTP && mtg?.status === 'in_progress') {
+        const { data: ratesTP } = await supabase.from('meeting_talking_points').insert({
+          meeting_id: id, content: 'Set rates for next month',
+          source_type: 'recurring', source_label: 'Rates & Pricing',
+          resolved: false, sort_order: -1,
+        }).select().single()
+        setTalkingPoints(ratesTP ? [ratesTP, ...(tps || [])] : (tps || []))
+      } else {
+        setTalkingPoints(tps || [])
+      }
       setReservations(res || [])
       setOpenTodos((allOpen || []).filter(t => t.created_meeting_id !== id))
       setTeamMembers(settingsData?.team_members || [])
@@ -154,10 +175,11 @@ export default function Meeting() {
       title: newObj.title.trim(),
       description: newObj.description.trim(),
       period_label: newObj.period_label || currentPeriod(),
+      assigned_to: newObj.assigned_to.trim(),
       status: 'on_track',
     }).select().single()
     setObjectives(prev => [...prev, data])
-    setNewObj({ title: '', description: '', period_label: currentPeriod() })
+    setNewObj({ title: '', description: '', period_label: currentPeriod(), assigned_to: '' })
     setAddingObj(false)
     setSavingObj(false)
   }
@@ -271,13 +293,24 @@ export default function Meeting() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{obj.title}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginTop: 2 }}>{obj.period_label}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
+                              <span>{obj.period_label}</span>
+                              {obj.assigned_to && <span>· {obj.assigned_to}</span>}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                             <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg }}>{s.label}</span>
-                            {!done && obj.status !== 'on_track'  && <button onClick={() => updateObjStatus(obj.id, 'on_track')}  style={smallBtn('#2C4A2E', 'rgba(44,74,46,0.1)')}>✓ On Track</button>}
-                            {!done && obj.status !== 'off_track' && <button onClick={() => updateObjStatus(obj.id, 'off_track')} style={smallBtn('#a33', 'rgba(170,51,51,0.1)')}>⚠ Off Track</button>}
-                            {!done && obj.status !== 'complete'  && <button onClick={() => updateObjStatus(obj.id, 'complete')}  style={smallBtn('#555', 'rgba(85,85,85,0.1)')}>✓ Complete</button>}
+                            {!done && (
+                              <button
+                                onClick={() => updateObjStatus(obj.id, { on_track: 'off_track', off_track: 'complete', complete: 'on_track' }[obj.status] || 'on_track')}
+                                style={smallBtn(s.color, s.bg)}
+                              >
+                                {obj.status === 'on_track' ? 'Mark Off Track' : obj.status === 'off_track' ? 'Mark Complete' : '↩ Reopen'}
+                              </button>
+                            )}
+                            {!done && (
+                              <button onClick={() => flagFromMetrics(`Discuss objective: ${obj.title}`)} title="Flag for discussion" style={{ padding: '3px 7px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--color-muted)', lineHeight: 1 }}>🚩</button>
+                            )}
                           </div>
                         </div>
                         {/* Inline notes / description */}
@@ -305,7 +338,12 @@ export default function Meeting() {
                   <div style={{ display: 'grid', gap: 8 }}>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input value={newObj.title} onChange={e => setNewObj(f => ({ ...f, title: e.target.value }))} placeholder="What are we focused on?" style={{ ...inp, flex: 1 }} />
-                      <input value={newObj.period_label} onChange={e => setNewObj(f => ({ ...f, period_label: e.target.value }))} placeholder="H2 2026" style={{ ...inp, width: 90, flexShrink: 0 }} />
+                      <select value={newObj.period_label} onChange={e => setNewObj(f => ({ ...f, period_label: e.target.value }))} style={{ ...inp, width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
+                        {nextSixQuarters().map(q => <option key={q} value={q}>{q}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input value={newObj.assigned_to} onChange={e => setNewObj(f => ({ ...f, assigned_to: e.target.value }))} placeholder="Assign to (optional)" list="team-members-list" style={{ ...inp, flex: 1 }} />
                     </div>
                     <textarea value={newObj.description} onChange={e => setNewObj(f => ({ ...f, description: e.target.value }))} placeholder="Description / key results (optional)" rows={2} style={{ ...inp, resize: 'vertical', fontSize: '0.85rem' }} />
                     <div style={{ display: 'flex', gap: 8 }}>

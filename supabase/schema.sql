@@ -218,3 +218,7 @@ create table if not exists monthly_reports (
 
 alter table monthly_reports enable row level security;
 create policy "monthly_reports_auth" on monthly_reports for all using (auth.role() = 'authenticated');
+
+-- ─── PHASE 5C: OBJECTIVE ASSIGNEES + QUARTERLY PERIODS ────────────────────
+
+alter table objectives add column if not exists assigned_to text default '';
