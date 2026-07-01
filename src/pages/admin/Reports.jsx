@@ -4,6 +4,25 @@ import { supabase } from '../../lib/supabase'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
+function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate() }
+function monthOf(s) { return new Date(s + 'T12:00:00').getMonth() }
+function yearOfDate(s) { return new Date(s + 'T12:00:00').getFullYear() }
+function nightsBetween(a, b) { return !a || !b ? 0 : Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000)) }
+
+function calcMonthMetrics(reservations, month, year) {
+  const res = reservations.filter(r => r.start_date && monthOf(r.start_date) === month && yearOfDate(r.start_date) === year)
+  const sum = (arr, f) => arr.reduce((s, r) => s + (r[f] || 0), 0)
+  const nights = arr => arr.reduce((s, r) => s + (r.nights || nightsBetween(r.start_date, r.end_date) || 0), 0)
+  const rentable = daysInMonth(year, month)
+  const gross = sum(res, 'gross_amount')
+  const hostFees = sum(res, 'host_fee')
+  const netAfterFees = sum(res, 'net_payout')
+  const nightsBooked = nights(res)
+  const occ = rentable > 0 ? (nightsBooked / rentable) * 100 : 0
+  const revpar = rentable > 0 && netAfterFees ? netAfterFees / rentable : null
+  return { gross, hostFees, netAfterFees, nightsBooked, rentable, occ, revpar }
+}
+
 function fmt$(n) {
   if (n == null || isNaN(n)) return '—'
   return '$' + Math.round(n).toLocaleString('en-US')
@@ -36,8 +55,7 @@ function getRevpar(r) {
 }
 
 function quarterOf(dateStr) {
-  const month = new Date(dateStr + 'T12:00:00').getMonth()
-  return Math.floor(month / 3) + 1
+  return Math.floor(new Date(dateStr + 'T12:00:00').getMonth() / 3) + 1
 }
 
 function yearOf(dateStr) {
@@ -50,14 +68,45 @@ export default function Reports() {
   const [expandedYears, setExpandedYears] = useState({})
 
   useEffect(() => {
-    supabase.from('monthly_reports').select('*').order('report_month', { ascending: false }).then(({ data }) => {
-      setReports(data || [])
-      const years = [...new Set((data || []).map(r => yearOf(r.report_month)))]
+    async function load() {
+      const [{ data: saved }, { data: resData }] = await Promise.all([
+        supabase.from('monthly_reports').select('*'),
+        supabase.from('reservations').select('*'),
+      ])
+
+      const allRes = resData || []
+      const savedReports = saved || []
+
+      // Index saved reports by YYYY-MM
+      const savedByKey = {}
+      savedReports.forEach(r => { savedByKey[r.report_month.slice(0, 7)] = r })
+
+      // Collect all unique year-month keys from reservations
+      const monthKeys = new Set(Object.keys(savedByKey))
+      allRes.forEach(r => {
+        if (!r.start_date) return
+        const y = yearOfDate(r.start_date)
+        const m = monthOf(r.start_date)
+        monthKeys.add(`${y}-${String(m + 1).padStart(2, '0')}`)
+      })
+
+      // Build unified report list
+      const all = [...monthKeys].map(key => {
+        if (savedByKey[key]) return savedByKey[key]
+        const [y, mo] = key.split('-').map(Number)
+        const metrics = calcMonthMetrics(allRes, mo - 1, y)
+        if (!metrics.gross && !metrics.netAfterFees && !metrics.nightsBooked) return null
+        return { id: null, report_month: `${key}-01`, meeting_id: null, metrics, expenses: [] }
+      }).filter(Boolean).sort((a, b) => b.report_month.localeCompare(a.report_month))
+
+      setReports(all)
+      const years = [...new Set(all.map(r => yearOf(r.report_month)))]
       const init = {}
       years.forEach(y => { init[y] = true })
       setExpandedYears(init)
       setLoading(false)
-    })
+    }
+    load()
   }, [])
 
   async function deleteReport(id) {
@@ -67,19 +116,18 @@ export default function Reports() {
 
   if (loading) return <div style={{ color: 'var(--color-muted)', padding: 32 }}>Loading…</div>
 
-  // Group by year
   const years = [...new Set(reports.map(r => yearOf(r.report_month)))].sort((a, b) => b - a)
 
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', margin: 0 }}>Reports</h1>
-        <p style={{ color: 'var(--color-muted)', fontSize: '0.85rem', marginTop: 6 }}>Auto-saved from each meeting's metrics step.</p>
+        <p style={{ color: 'var(--color-muted)', fontSize: '0.85rem', marginTop: 6 }}>Auto-generated from reservation data. Expenses & overrides added via meetings.</p>
       </div>
 
       {reports.length === 0 ? (
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '40px 32px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--color-muted)', margin: 0 }}>No reports yet. Reports save automatically during the Monthly Metrics step of each meeting.</p>
+          <p style={{ color: 'var(--color-muted)', margin: 0 }}>No reservation data found yet.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 32 }}>
@@ -89,20 +137,18 @@ export default function Reports() {
             const yearExp = yearReports.reduce((s, r) => s + getExpTotal(r), 0)
             const expanded = expandedYears[year] !== false
 
-            // Quarterly summaries
             const quarters = [1,2,3,4].map(q => {
-              const qReports = yearReports.filter(r => quarterOf(r.report_month) === q)
-              if (!qReports.length) return null
-              const net = qReports.reduce((s, r) => s + getNet(r), 0)
-              const exp = qReports.reduce((s, r) => s + getExpTotal(r), 0)
-              const occs = qReports.map(r => getOcc(r)).filter(v => v != null)
+              const qr = yearReports.filter(r => quarterOf(r.report_month) === q)
+              if (!qr.length) return null
+              const net = qr.reduce((s, r) => s + getNet(r), 0)
+              const exp = qr.reduce((s, r) => s + getExpTotal(r), 0)
+              const occs = qr.map(r => getOcc(r)).filter(v => v != null)
               const avgOcc = occs.length ? occs.reduce((s, v) => s + v, 0) / occs.length : null
-              return { q, net, exp, avgOcc, count: qReports.length }
+              return { q, net, exp, avgOcc }
             }).filter(Boolean)
 
             return (
               <div key={year}>
-                {/* Year header */}
                 <div
                   onClick={() => setExpandedYears(prev => ({ ...prev, [year]: !expanded }))}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: 12 }}
@@ -121,7 +167,6 @@ export default function Reports() {
 
                 {expanded && (
                   <>
-                    {/* Quarterly summary row */}
                     {quarters.length > 0 && (
                       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${quarters.length}, 1fr)`, gap: 8, marginBottom: 12 }}>
                         {quarters.map(({ q, net, exp, avgOcc }) => (
@@ -137,10 +182,9 @@ export default function Reports() {
                       </div>
                     )}
 
-                    {/* Monthly rows */}
                     <div style={{ display: 'grid', gap: 8 }}>
                       {yearReports.map(r => (
-                        <ReportRow key={r.id} r={r} onDelete={deleteReport} />
+                        <ReportRow key={r.report_month} r={r} onDelete={r.id ? deleteReport : null} />
                       ))}
                     </div>
                   </>
@@ -179,28 +223,33 @@ function ReportRow({ r, onDelete }) {
   const occ = getOcc(r)
   const revpar = getRevpar(r)
 
+  const inner = (
+    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr repeat(4, auto)', gap: 20, alignItems: 'center', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px 20px', color: 'inherit', textDecoration: 'none' }}>
+      <div style={{ fontWeight: 600, fontSize: '0.9rem', fontFamily: 'var(--font-display)' }}>{fmtMonth(r.report_month)}</div>
+      <Stat label="Net Revenue" value={fmt$(net)} />
+      <Stat label="Occupancy" value={occ != null ? Math.round(occ) + '%' : '—'} />
+      <Stat label="RevPAR" value={fmt$(revpar)} />
+      <Stat label="Expenses" value={exp > 0 ? fmt$(exp) : '—'} />
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-      <Link
-        to={r.meeting_id ? `/admin/meetings/${r.meeting_id}` : '#'}
-        style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr repeat(4, auto)', gap: 20, alignItems: 'center', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px 20px', textDecoration: 'none', color: 'inherit' }}
-      >
-        <div style={{ fontWeight: 600, fontSize: '0.9rem', fontFamily: 'var(--font-display)' }}>{fmtMonth(r.report_month)}</div>
-        <Stat label="Net Revenue" value={fmt$(net)} />
-        <Stat label="Occupancy" value={occ != null ? Math.round(occ) + '%' : '—'} />
-        <Stat label="RevPAR" value={fmt$(revpar)} />
-        <Stat label="Expenses" value={exp > 0 ? fmt$(exp) : '—'} />
-      </Link>
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, flexShrink: 0 }}>
-        {confirming ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button onClick={() => onDelete(r.id)} style={{ padding: '5px 8px', background: '#a33', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.72rem', cursor: 'pointer' }}>Del</button>
-            <button onClick={() => setConfirming(false)} style={{ padding: '5px 6px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.72rem', cursor: 'pointer', color: 'var(--color-muted)' }}>✕</button>
-          </div>
-        ) : (
-          <button onClick={() => setConfirming(true)} title="Delete" style={{ padding: '8px 10px', background: 'none', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
-        )}
-      </div>
+      {r.meeting_id
+        ? <Link to={`/admin/meetings/${r.meeting_id}`} style={{ flex: 1, display: 'contents' }}>{inner}</Link>
+        : inner}
+      {onDelete && (
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, flexShrink: 0 }}>
+          {confirming ? (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => onDelete(r.id)} style={{ padding: '5px 8px', background: '#a33', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.72rem', cursor: 'pointer' }}>Del</button>
+              <button onClick={() => setConfirming(false)} style={{ padding: '5px 6px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.72rem', cursor: 'pointer', color: 'var(--color-muted)' }}>✕</button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirming(true)} title="Delete" style={{ padding: '8px 10px', background: 'none', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
