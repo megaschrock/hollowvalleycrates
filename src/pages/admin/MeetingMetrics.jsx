@@ -213,11 +213,7 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
           </div>
         )}
         {onFlag && !done && (
-          <button
-            onClick={() => onFlag(`Discuss: ${label}`)}
-            title="Flag for discussion"
-            style={{ position: 'absolute', top: 8, right: 8, padding: '2px 5px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--color-muted)', lineHeight: 1 }}
-          >🚩</button>
+          <FlagBtn onClick={() => onFlag(`Discuss: ${label}`)} style={{ position: 'absolute', top: 8, right: 8 }} />
         )}
       </div>
     )
@@ -256,7 +252,7 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
           <span style={{ color: 'var(--color-muted)', fontSize: '1rem' }}>$</span>
           <input type="number" value={bankBalance} onChange={e => { setBankBalance(e.target.value); setSaved(false) }} placeholder="Current balance" disabled={done} style={{ ...inp, maxWidth: 180 }} step="0.01" />
           {onFlag && !done && (
-            <button onClick={() => onFlag('Discuss: Bank Balance')} title="Flag for discussion" style={{ padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-muted)' }}>🚩</button>
+            <FlagBtn onClick={() => onFlag('Discuss: Bank Balance')} style={{ padding: '4px 8px' }} />
           )}
         </div>
       </div>
@@ -407,8 +403,32 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
         }
         @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (max-width: 380px) { .metrics-grid { grid-template-columns: 1fr !important; } }
+        @keyframes flagPop {
+          0%   { transform: scale(1) rotate(0deg); }
+          35%  { transform: scale(1.55) rotate(-12deg); }
+          65%  { transform: scale(0.85) rotate(6deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+        .flag-pop { animation: flagPop 0.35s ease forwards; }
       `}</style>
     </div>
+  )
+}
+
+function FlagBtn({ onClick, style: extraStyle }) {
+  const [anim, setAnim] = useState(false)
+  function handle() {
+    onClick()
+    setAnim(true)
+    setTimeout(() => setAnim(false), 400)
+  }
+  return (
+    <button
+      onClick={handle}
+      title="Flag for discussion"
+      className={anim ? 'flag-pop' : ''}
+      style={{ padding: '2px 5px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--color-muted)', lineHeight: 1, display: 'inline-block', ...extraStyle }}
+    >🚩</button>
   )
 }
 

@@ -299,17 +299,22 @@ export default function Meeting() {
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg }}>{s.label}</span>
-                            {!done && (
+                            {!done && obj.status !== 'complete' && (
                               <button
-                                onClick={() => updateObjStatus(obj.id, { on_track: 'off_track', off_track: 'complete', complete: 'on_track' }[obj.status] || 'on_track')}
+                                onClick={() => updateObjStatus(obj.id, obj.status === 'on_track' ? 'off_track' : 'on_track')}
                                 style={smallBtn(s.color, s.bg)}
                               >
-                                {obj.status === 'on_track' ? 'Mark Off Track' : obj.status === 'off_track' ? 'Mark Complete' : '↩ Reopen'}
+                                {obj.status === 'on_track' ? '✓ On Track' : '⚠ Off Track'}
                               </button>
                             )}
+                            {!done && obj.status === 'complete' && (
+                              <button onClick={() => updateObjStatus(obj.id, 'on_track')} style={smallBtn('#555', 'rgba(85,85,85,0.1)')}>↩ Reopen</button>
+                            )}
+                            {done && (
+                              <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg }}>{s.label}</span>
+                            )}
                             {!done && (
-                              <button onClick={() => flagFromMetrics(`Discuss objective: ${obj.title}`)} title="Flag for discussion" style={{ padding: '3px 7px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--color-muted)', lineHeight: 1 }}>🚩</button>
+                              <FlagBtn onClick={() => flagFromMetrics(`Discuss objective: ${obj.title}`)} />
                             )}
                           </div>
                         </div>
@@ -537,6 +542,13 @@ export default function Meeting() {
         @media (max-width: 380px) {
           .metrics-grid { grid-template-columns: 1fr !important; }
         }
+        @keyframes flagPop {
+          0%   { transform: scale(1) rotate(0deg); }
+          35%  { transform: scale(1.55) rotate(-12deg); }
+          65%  { transform: scale(0.85) rotate(6deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+        .flag-pop { animation: flagPop 0.35s ease forwards; }
       `}</style>
     </div>
   )
@@ -623,4 +635,21 @@ const STATUS_MAP = {
   on_track: { label: 'On Track', color: '#2C4A2E', bg: 'rgba(44,74,46,0.1)', borderColor: 'rgba(44,74,46,0.35)' },
   off_track: { label: 'Off Track', color: '#a33', bg: 'rgba(170,51,51,0.1)', borderColor: 'rgba(170,51,51,0.4)' },
   complete:  { label: 'Complete',  color: '#555', bg: 'rgba(85,85,85,0.1)',  borderColor: 'rgba(85,85,85,0.25)' },
+}
+
+function FlagBtn({ onClick }) {
+  const [anim, setAnim] = useState(false)
+  function handle() {
+    onClick()
+    setAnim(true)
+    setTimeout(() => setAnim(false), 400)
+  }
+  return (
+    <button
+      onClick={handle}
+      title="Flag for discussion"
+      className={anim ? 'flag-pop' : ''}
+      style={{ padding: '3px 7px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--color-muted)', lineHeight: 1, display: 'inline-block' }}
+    >🚩</button>
+  )
 }
