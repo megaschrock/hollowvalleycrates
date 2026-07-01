@@ -7,6 +7,7 @@ const navItems = [
   { to: '/admin/ownership', label: 'Ownership' },
   { to: '/admin/objectives', label: 'Objectives' },
   { to: '/admin/meetings', label: 'Meetings' },
+  { to: '/admin/reports', label: 'Reports' },
   { header: 'Operations' },
   { to: '/admin/dashboard', label: 'Dashboard' },
   { to: '/admin/inquiries', label: 'Inquiries' },
