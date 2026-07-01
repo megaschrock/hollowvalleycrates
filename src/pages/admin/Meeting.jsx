@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase'
 import MeetingMetrics from './MeetingMetrics'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const STEPS = [
   { letter: 'A', label: 'Personal Updates' },
   { letter: 'B', label: 'Monthly Metrics' },
@@ -16,14 +15,15 @@ const STEPS = [
 
 function monthOf(s) { return new Date(s + 'T12:00:00').getMonth() }
 function yearOf(s) { return new Date(s + 'T12:00:00').getFullYear() }
-function fmt$(n) { return n != null && !isNaN(n) ? '$' + Math.round(n).toLocaleString() : '—' }
-function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate() }
-function nightsOf(arr) { return arr.reduce((s, r) => s + (r.nights || 0), 0) }
-function revenueOf(arr) { return arr.filter(r => r.net_payout != null).reduce((s, r) => s + r.net_payout, 0) }
 function oneMonthOut(meetingDate) {
   const d = new Date(meetingDate + 'T12:00:00')
   d.setMonth(d.getMonth() + 1)
   return d.toISOString().slice(0, 10)
+}
+function currentPeriod() {
+  const m = new Date().getMonth()
+  const y = new Date().getFullYear()
+  return `${m < 6 ? 'H1' : 'H2'} ${y}`
 }
 
 const inp = { width: '100%', padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', background: '#fff', color: 'var(--color-text)', boxSizing: 'border-box' }
@@ -41,16 +41,20 @@ export default function Meeting() {
   const [talkingPoints, setTalkingPoints] = useState([])
   const [meetingTodos, setMeetingTodos] = useState([])
   const [reservations, setReservations] = useState([])
+  const [teamMembers, setTeamMembers] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Quick "add talking point" input used on steps A–D
   const [quickTP, setQuickTP] = useState('')
-
-  // Talking points step: note-taking per TP
   const [tpNotes, setTpNotes] = useState({})
-
-  // To-do form on the talking points step
   const [newTodo, setNewTodo] = useState({ title: '', assigned_to: '', due_date: '' })
+
+  // Objective inline add (Step C)
+  const [addingObj, setAddingObj] = useState(false)
+  const [newObj, setNewObj] = useState({ title: '', description: '', period_label: currentPeriod() })
+  const [savingObj, setSavingObj] = useState(false)
+
+  // Objective inline notes (Step C)
+  const [objNotes, setObjNotes] = useState({})
 
   const [ending, setEnding] = useState(false)
 
@@ -63,6 +67,7 @@ export default function Meeting() {
         { data: mTodos },
         { data: res },
         { data: allOpen },
+        { data: settingsData },
       ] = await Promise.all([
         supabase.from('meetings').select('*').eq('id', id).single(),
         supabase.from('objectives').select('*').eq('archived', false).order('sort_order').order('created_at', { ascending: false }),
@@ -70,6 +75,7 @@ export default function Meeting() {
         supabase.from('meeting_todos').select('*').eq('created_meeting_id', id).order('created_at'),
         supabase.from('reservations').select('*'),
         supabase.from('meeting_todos').select('*').eq('completed', false).order('created_at'),
+        supabase.from('settings').select('team_members').eq('id', 1).single(),
       ])
       setMeeting(mtg)
       setObjectives(objs || [])
@@ -77,6 +83,7 @@ export default function Meeting() {
       setMeetingTodos(mTodos || [])
       setReservations(res || [])
       setOpenTodos((allOpen || []).filter(t => t.created_meeting_id !== id))
+      setTeamMembers(settingsData?.team_members || [])
       if (mtg?.meeting_date) {
         setNewTodo({ title: '', assigned_to: '', due_date: oneMonthOut(mtg.meeting_date) })
       }
@@ -85,60 +92,30 @@ export default function Meeting() {
     load()
   }, [id])
 
-  // ── Metrics ──────────────────────────────────────────────────────────────
-  const now = new Date()
-  const cm = now.getMonth()
-  const cy = now.getFullYear()
-
-  const thisMonth = reservations.filter(r => yearOf(r.start_date) === cy && monthOf(r.start_date) === cm)
-  const lyMonth   = reservations.filter(r => yearOf(r.start_date) === cy - 1 && monthOf(r.start_date) === cm)
-  const ytd       = reservations.filter(r => yearOf(r.start_date) === cy && monthOf(r.start_date) <= cm)
-  const ytdLY     = reservations.filter(r => yearOf(r.start_date) === cy - 1 && monthOf(r.start_date) <= cm)
-
-  const tmNights  = nightsOf(thisMonth)
-  const lyNights  = nightsOf(lyMonth)
-  const tmRev     = revenueOf(thisMonth)
-  const lyRev     = revenueOf(lyMonth)
-  const tmOcc     = Math.round((tmNights / daysInMonth(cy, cm)) * 100)
-  const lyOcc     = Math.round((lyNights / daysInMonth(cy - 1, cm)) * 100)
-  const tmADR     = tmNights > 0 ? Math.round(tmRev / tmNights) : null
-  const ytdNights = nightsOf(ytd)
-  const ytdNightsLY = nightsOf(ytdLY)
-  const ytdRev    = revenueOf(ytd)
-  const ytdRevLY  = revenueOf(ytdLY)
-
-  const metrics = [
-    { name: 'Nights Sold',    value: tmNights,  prior: lyNights,    fmt: n => String(n) },
-    { name: 'Cash Flow',      value: tmRev,     prior: lyRev,       fmt: fmt$ },
-    { name: 'Occupancy',      value: tmOcc,     prior: lyOcc,       fmt: n => `${n}%` },
-    { name: 'Avg Daily Rate', value: tmADR,     prior: null,        fmt: fmt$ },
-    { name: 'YTD Nights',     value: ytdNights, prior: ytdNightsLY, fmt: n => String(n) },
-    { name: 'YTD Cash Flow',  value: ytdRev,    prior: ytdRevLY,    fmt: fmt$ },
-  ]
-
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   async function addQuickTP(sourceLabel) {
     if (!quickTP.trim()) return
     const { data: tp } = await supabase.from('meeting_talking_points').insert({
-      meeting_id: id,
-      content: quickTP.trim(),
-      source_type: 'flagged',
-      source_label: sourceLabel,
-      resolved: false,
-      sort_order: talkingPoints.length,
+      meeting_id: id, content: quickTP.trim(), source_type: 'flagged',
+      source_label: sourceLabel, resolved: false, sort_order: talkingPoints.length,
     }).select().single()
     setTalkingPoints(prev => [...prev, tp])
     setQuickTP('')
   }
 
+  async function flagFromMetrics(text) {
+    const { data: tp } = await supabase.from('meeting_talking_points').insert({
+      meeting_id: id, content: text, source_type: 'flagged',
+      source_label: 'Monthly Metrics', resolved: false, sort_order: talkingPoints.length,
+    }).select().single()
+    setTalkingPoints(prev => [...prev, tp])
+  }
+
   async function addManualTP(text) {
     if (!text.trim()) return
     const { data: tp } = await supabase.from('meeting_talking_points').insert({
-      meeting_id: id,
-      content: text.trim(),
-      source_type: 'manual',
-      sort_order: talkingPoints.length,
+      meeting_id: id, content: text.trim(), source_type: 'manual', sort_order: talkingPoints.length,
     }).select().single()
     setTalkingPoints(prev => [...prev, tp])
   }
@@ -164,6 +141,27 @@ export default function Meeting() {
     setObjectives(prev => prev.map(o => o.id === objId ? { ...o, status } : o))
   }
 
+  async function saveObjNotes(objId) {
+    const description = objNotes[objId] ?? objectives.find(o => o.id === objId)?.description ?? ''
+    await supabase.from('objectives').update({ description }).eq('id', objId)
+    setObjectives(prev => prev.map(o => o.id === objId ? { ...o, description } : o))
+  }
+
+  async function addObjectiveInMeeting() {
+    if (!newObj.title.trim()) return
+    setSavingObj(true)
+    const { data } = await supabase.from('objectives').insert({
+      title: newObj.title.trim(),
+      description: newObj.description.trim(),
+      period_label: newObj.period_label || currentPeriod(),
+      status: 'on_track',
+    }).select().single()
+    setObjectives(prev => [...prev, data])
+    setNewObj({ title: '', description: '', period_label: currentPeriod() })
+    setAddingObj(false)
+    setSavingObj(false)
+  }
+
   async function completeTodo(todoId) {
     await supabase.from('meeting_todos').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', todoId)
     setOpenTodos(prev => prev.filter(t => t.id !== todoId))
@@ -172,10 +170,8 @@ export default function Meeting() {
   async function addMeetingTodo() {
     if (!newTodo.title.trim()) return
     const { data: td } = await supabase.from('meeting_todos').insert({
-      title: newTodo.title.trim(),
-      assigned_to: newTodo.assigned_to.trim(),
-      due_date: newTodo.due_date || null,
-      created_meeting_id: id,
+      title: newTodo.title.trim(), assigned_to: newTodo.assigned_to.trim(),
+      due_date: newTodo.due_date || null, created_meeting_id: id,
     }).select().single()
     setMeetingTodos(prev => [...prev, td])
     setNewTodo({ title: '', assigned_to: '', due_date: oneMonthOut(meeting.meeting_date) })
@@ -200,12 +196,13 @@ export default function Meeting() {
 
   const done = meeting.status === 'completed'
   const dateStr = new Date(meeting.meeting_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  const now = new Date()
 
   return (
     <div style={{ maxWidth: 780, margin: '0 auto' }}>
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 28 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
         <Link to="/admin/meetings" style={{ fontSize: '0.8rem', color: 'var(--color-muted)', textDecoration: 'none' }}>← All Meetings</Link>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', letterSpacing: '0.03em', margin: '6px 0 4px' }}>{dateStr}</h1>
         <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: done ? 'var(--color-muted)' : 'var(--color-primary)' }}>
@@ -213,10 +210,10 @@ export default function Meeting() {
         </span>
       </div>
 
-      {/* ── Step progress ── */}
+      {/* Step progress */}
       <StepProgress steps={STEPS} current={step} />
 
-      {/* ── Step content ── */}
+      {/* Step content */}
       <div style={{ minHeight: 320 }}>
 
         {/* A — Personal Updates */}
@@ -230,12 +227,7 @@ export default function Meeting() {
               </p>
             </div>
             {!done && (
-              <QuickAddTP
-                value={quickTP}
-                onChange={setQuickTP}
-                onAdd={() => addQuickTP('Personal Updates')}
-                placeholder="Something came up worth discussing as a group…"
-              />
+              <QuickAddTP value={quickTP} onChange={setQuickTP} onAdd={() => addQuickTP('Personal Updates')} placeholder="Something came up worth discussing as a group…" />
             )}
             {done && talkingPoints.filter(tp => tp.source_label === 'Personal Updates').length > 0 && (
               <FlaggedList points={talkingPoints.filter(tp => tp.source_label === 'Personal Updates')} />
@@ -251,15 +243,11 @@ export default function Meeting() {
               meetingDate={meeting.meeting_date}
               reservations={reservations}
               done={done}
+              onFlag={!done ? flagFromMetrics : null}
             />
             {!done && (
               <div style={{ marginTop: 20 }}>
-                <QuickAddTP
-                  value={quickTP}
-                  onChange={setQuickTP}
-                  onAdd={() => addQuickTP('Monthly Metrics')}
-                  placeholder="Flag a metric for group discussion…"
-                />
+                <QuickAddTP value={quickTP} onChange={setQuickTP} onAdd={() => addQuickTP('Monthly Metrics')} placeholder="Flag a metric for group discussion…" />
               </div>
             )}
           </div>
@@ -270,21 +258,20 @@ export default function Meeting() {
           <div>
             <SectionHeader letter="C" label="Objectives" color="#6c3483" />
             <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic', marginBottom: 16 }}>
-              Bi-annual goals — review status and update as needed.
+              Bi-annual goals — review status and add notes. Changes persist to the Objectives page.
             </p>
             {objectives.length === 0
-              ? <p style={{ color: 'var(--color-muted)' }}>No active objectives. <Link to="/admin/objectives" style={{ color: 'var(--color-primary)' }}>Add some →</Link></p>
+              ? <p style={{ color: 'var(--color-muted)', marginBottom: 12 }}>No active objectives yet — add one below.</p>
               : (
-                <div style={{ display: 'grid', gap: 8, marginBottom: 24 }}>
+                <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
                   {objectives.map(obj => {
                     const s = STATUS_MAP[obj.status] || STATUS_MAP.on_track
                     return (
                       <div key={obj.id} style={{ padding: '13px 16px', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', borderLeft: `3px solid ${s.borderColor}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{obj.title}</div>
-                            {obj.description && <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>{obj.description}</div>}
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginTop: 3 }}>{obj.period_label}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginTop: 2 }}>{obj.period_label}</div>
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                             <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg }}>{s.label}</span>
@@ -293,19 +280,49 @@ export default function Meeting() {
                             {!done && obj.status !== 'complete'  && <button onClick={() => updateObjStatus(obj.id, 'complete')}  style={smallBtn('#555', 'rgba(85,85,85,0.1)')}>✓ Complete</button>}
                           </div>
                         </div>
+                        {/* Inline notes / description */}
+                        <textarea
+                          value={objNotes[obj.id] !== undefined ? objNotes[obj.id] : (obj.description || '')}
+                          onChange={e => setObjNotes(prev => ({ ...prev, [obj.id]: e.target.value }))}
+                          onBlur={() => saveObjNotes(obj.id)}
+                          placeholder="Notes, key results, or context…"
+                          rows={2}
+                          disabled={done}
+                          style={{ ...inp, fontSize: '0.82rem', resize: 'vertical', color: 'var(--color-muted)' }}
+                        />
                       </div>
                     )
                   })}
                 </div>
               )
             }
+
+            {/* Add Objective inline */}
             {!done && (
-              <QuickAddTP
-                value={quickTP}
-                onChange={setQuickTP}
-                onAdd={() => addQuickTP('Objectives')}
-                placeholder="Flag an objective for group discussion…"
-              />
+              addingObj ? (
+                <div style={{ background: 'rgba(108,52,131,0.05)', border: '1px solid rgba(108,52,131,0.2)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 16 }}>
+                  <p style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6c3483', fontWeight: 700, margin: '0 0 12px' }}>New Objective</p>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input value={newObj.title} onChange={e => setNewObj(f => ({ ...f, title: e.target.value }))} placeholder="What are we focused on?" style={{ ...inp, flex: 1 }} />
+                      <input value={newObj.period_label} onChange={e => setNewObj(f => ({ ...f, period_label: e.target.value }))} placeholder="H2 2026" style={{ ...inp, width: 90, flexShrink: 0 }} />
+                    </div>
+                    <textarea value={newObj.description} onChange={e => setNewObj(f => ({ ...f, description: e.target.value }))} placeholder="Description / key results (optional)" rows={2} style={{ ...inp, resize: 'vertical', fontSize: '0.85rem' }} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={addObjectiveInMeeting} disabled={savingObj || !newObj.title.trim()} style={{ ...addBtn, background: '#6c3483', opacity: !newObj.title.trim() ? 0.4 : 1 }}>{savingObj ? 'Adding…' : 'Add Objective'}</button>
+                      <button onClick={() => setAddingObj(false)} style={{ padding: '9px 14px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', cursor: 'pointer', color: 'var(--color-muted)' }}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setAddingObj(true)} style={{ padding: '8px 16px', background: 'none', border: '1px dashed rgba(108,52,131,0.4)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: '#6c3483', cursor: 'pointer', marginBottom: 16, width: '100%' }}>
+                  + Add Objective
+                </button>
+              )
+            )}
+
+            {!done && (
+              <QuickAddTP value={quickTP} onChange={setQuickTP} onAdd={() => addQuickTP('Objectives')} placeholder="Flag an objective for group discussion…" />
             )}
           </div>
         )}
@@ -343,12 +360,7 @@ export default function Meeting() {
               )
             }
             {!done && (
-              <QuickAddTP
-                value={quickTP}
-                onChange={setQuickTP}
-                onAdd={() => addQuickTP('Open To-Dos')}
-                placeholder="Flag a to-do for group discussion…"
-              />
+              <QuickAddTP value={quickTP} onChange={setQuickTP} onAdd={() => addQuickTP('Open To-Dos')} placeholder="Flag a to-do for group discussion…" />
             )}
           </div>
         )}
@@ -358,15 +370,12 @@ export default function Meeting() {
           <div>
             <SectionHeader letter="E" label="Talking Points" color="#a33" />
             <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic', marginBottom: 16 }}>
-              Work through each item. Resolve as you go, and add to-dos for anything that needs follow-up.
+              Work through each item. Resolve as you go, and add to-dos for anything needing follow-up.
             </p>
 
-            {/* Talking points list */}
             <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
               {talkingPoints.length === 0 && (
-                <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
-                  Nothing flagged yet — add items below or flag them from sections A–D.
-                </p>
+                <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>Nothing flagged yet — add items below or flag them from sections A–D.</p>
               )}
               {talkingPoints.map(tp => (
                 <div key={tp.id} style={{ padding: '13px 15px', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', borderLeft: `3px solid ${tp.resolved ? 'var(--color-border)' : '#a33'}`, opacity: tp.resolved ? 0.65 : 1 }}>
@@ -378,9 +387,7 @@ export default function Meeting() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      {!done && !tp.resolved && (
-                        <button onClick={() => resolveTP(tp.id)} style={smallBtn('#555', 'rgba(85,85,85,0.08)')}>✓ Resolved</button>
-                      )}
+                      {!done && !tp.resolved && <button onClick={() => resolveTP(tp.id)} style={smallBtn('#555', 'rgba(85,85,85,0.08)')}>✓ Resolved</button>}
                       {!done && <button onClick={() => deleteTP(tp.id)} style={delBtn}>×</button>}
                     </div>
                   </div>
@@ -402,41 +409,23 @@ export default function Meeting() {
               ))}
             </div>
 
-            {/* Add talking point */}
-            {!done && (
-              <AddTPInline onAdd={addManualTP} />
-            )}
+            {!done && <AddTPInline onAdd={addManualTP} />}
 
-            {/* Add to-do */}
+            {/* To-do form */}
             {!done && (
               <div style={{ marginTop: 28, background: 'rgba(26,138,74,0.05)', border: '1px solid rgba(26,138,74,0.2)', borderRadius: 'var(--radius-md)', padding: 20 }}>
                 <p style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#1a8a4a', fontWeight: 700, margin: '0 0 12px' }}>Add To-Do</p>
+                <datalist id="team-members-list">
+                  {teamMembers.map((m, i) => <option key={i} value={m} />)}
+                </datalist>
                 <div className="todo-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8 }}>
-                  <input
-                    value={newTodo.title}
-                    onChange={e => setNewTodo(f => ({ ...f, title: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && addMeetingTodo()}
-                    placeholder="What needs to get done?"
-                    style={inp}
-                  />
-                  <input
-                    value={newTodo.assigned_to}
-                    onChange={e => setNewTodo(f => ({ ...f, assigned_to: e.target.value }))}
-                    placeholder="Assigned to"
-                    style={inp}
-                  />
-                  <input
-                    type="date"
-                    value={newTodo.due_date}
-                    onChange={e => setNewTodo(f => ({ ...f, due_date: e.target.value }))}
-                    style={inp}
-                  />
+                  <input value={newTodo.title} onChange={e => setNewTodo(f => ({ ...f, title: e.target.value }))} onKeyDown={e => e.key === 'Enter' && addMeetingTodo()} placeholder="What needs to get done?" style={inp} />
+                  <input value={newTodo.assigned_to} onChange={e => setNewTodo(f => ({ ...f, assigned_to: e.target.value }))} placeholder="Assigned to" list="team-members-list" style={inp} />
+                  <input type="date" value={newTodo.due_date} onChange={e => setNewTodo(f => ({ ...f, due_date: e.target.value }))} style={inp} />
                   <button onClick={addMeetingTodo} style={{ ...addBtn, background: '#1a8a4a' }}>Add</button>
                 </div>
                 {meetingTodos.length > 0 && (
-                  <p style={{ margin: '10px 0 0', fontSize: '0.78rem', color: '#1a8a4a' }}>
-                    {meetingTodos.length} to-do{meetingTodos.length !== 1 ? 's' : ''} added this meeting
-                  </p>
+                  <p style={{ margin: '10px 0 0', fontSize: '0.78rem', color: '#1a8a4a' }}>{meetingTodos.length} to-do{meetingTodos.length !== 1 ? 's' : ''} added this meeting</p>
                 )}
               </div>
             )}
@@ -474,7 +463,7 @@ export default function Meeting() {
 
       </div>
 
-      {/* ── Navigation ── */}
+      {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--color-border)' }}>
         <button
           onClick={() => { setStep(s => s - 1); setQuickTP('') }}
@@ -484,9 +473,7 @@ export default function Meeting() {
           ← Back
         </button>
 
-        <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>
-          {step + 1} / {STEPS.length}
-        </span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>{step + 1} / {STEPS.length}</span>
 
         {step < STEPS.length - 1 ? (
           <button
@@ -521,7 +508,7 @@ export default function Meeting() {
 
 function StepProgress({ steps, current }) {
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         {steps.map((s, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 0 }}>
@@ -531,8 +518,7 @@ function StepProgress({ steps, current }) {
               border: `2px solid ${i === current ? 'var(--color-primary)' : i < current ? 'rgba(44,74,46,0.3)' : 'var(--color-border)'}`,
               color: i === current ? '#fff' : i < current ? 'var(--color-primary)' : 'var(--color-muted)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-display)', fontSize: '0.82rem', fontWeight: 700,
-              transition: 'all 0.2s',
+              fontFamily: 'var(--font-display)', fontSize: '0.82rem', fontWeight: 700, transition: 'all 0.2s',
             }}>
               {i < current ? '✓' : s.letter}
             </div>
@@ -543,7 +529,7 @@ function StepProgress({ steps, current }) {
         ))}
       </div>
       <div style={{ marginTop: 10, fontSize: '0.8rem' }}>
-        <span style={{ color: 'var(--color-muted)' }}>Step {current + 1} of {steps.length} — </span>
+        <span style={{ color: 'var(--color-muted)' }}>Step {current + 1} of {STEPS.length} — </span>
         <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{steps[current].label}</span>
       </div>
     </div>
@@ -564,13 +550,7 @@ function QuickAddTP({ value, onChange, onAdd, placeholder }) {
     <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 20, marginTop: 8 }}>
       <p style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a33', fontWeight: 700, margin: '0 0 10px' }}>Flag for Discussion</p>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && onAdd()}
-          placeholder={placeholder}
-          style={inp}
-        />
+        <input value={value} onChange={e => onChange(e.target.value)} onKeyDown={e => e.key === 'Enter' && onAdd()} placeholder={placeholder} style={inp} />
         <button onClick={onAdd} disabled={!value.trim()} style={{ ...addBtn, background: '#a33', opacity: value.trim() ? 1 : 0.4 }}>Add</button>
       </div>
     </div>
@@ -579,10 +559,7 @@ function QuickAddTP({ value, onChange, onAdd, placeholder }) {
 
 function AddTPInline({ onAdd }) {
   const [text, setText] = useState('')
-  function submit() {
-    onAdd(text)
-    setText('')
-  }
+  function submit() { onAdd(text); setText('') }
   return (
     <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, marginTop: 4 }}>
       <p style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-muted)', fontWeight: 700, margin: '0 0 8px' }}>Add Talking Point</p>

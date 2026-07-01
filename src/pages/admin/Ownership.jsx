@@ -14,12 +14,14 @@ export default function Ownership() {
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
   const [valueInput, setValueInput] = useState('')
+  const [memberInput, setMemberInput] = useState('')
 
   function startEdit() {
     setForm({
       mission: settings?.mission || '',
       vision: settings?.vision || '',
       company_values: settings?.company_values || [],
+      team_members: settings?.team_members || [],
     })
     setEditing(true)
   }
@@ -44,11 +46,22 @@ export default function Ownership() {
     setForm(f => ({ ...f, company_values: f.company_values.filter((_, idx) => idx !== i) }))
   }
 
+  function addMember() {
+    if (!memberInput.trim()) return
+    setForm(f => ({ ...f, team_members: [...(f.team_members || []), memberInput.trim()] }))
+    setMemberInput('')
+  }
+
+  function removeMember(i) {
+    setForm(f => ({ ...f, team_members: f.team_members.filter((_, idx) => idx !== i) }))
+  }
+
   if (loading) return <div style={{ color: 'var(--color-muted)' }}>Loading…</div>
 
   const mission = settings?.mission || ''
   const vision = settings?.vision || ''
   const values = settings?.company_values || []
+  const members = settings?.team_members || []
 
   return (
     <div>
@@ -61,21 +74,11 @@ export default function Ownership() {
         <div style={{ display: 'grid', gap: 20, marginBottom: 32 }}>
           <div style={card}>
             <label style={lbl}>Mission</label>
-            <textarea
-              value={form.mission}
-              onChange={e => setForm(f => ({ ...f, mission: e.target.value }))}
-              placeholder="What we do and why it matters…"
-              style={{ ...inp, height: 88, resize: 'vertical' }}
-            />
+            <textarea value={form.mission} onChange={e => setForm(f => ({ ...f, mission: e.target.value }))} placeholder="What we do and why it matters…" style={{ ...inp, height: 88, resize: 'vertical' }} />
           </div>
           <div style={card}>
             <label style={lbl}>Vision</label>
-            <textarea
-              value={form.vision}
-              onChange={e => setForm(f => ({ ...f, vision: e.target.value }))}
-              placeholder="What we're building toward…"
-              style={{ ...inp, height: 88, resize: 'vertical' }}
-            />
+            <textarea value={form.vision} onChange={e => setForm(f => ({ ...f, vision: e.target.value }))} placeholder="What we're building toward…" style={{ ...inp, height: 88, resize: 'vertical' }} />
           </div>
           <div style={card}>
             <label style={lbl}>Values</label>
@@ -88,14 +91,24 @@ export default function Ownership() {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                value={valueInput}
-                onChange={e => setValueInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addValue())}
-                placeholder="Add a value…"
-                style={{ ...inp, flex: 1 }}
-              />
+              <input value={valueInput} onChange={e => setValueInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addValue())} placeholder="Add a value…" style={{ ...inp, flex: 1 }} />
               <button onClick={addValue} style={btnPrimary}>Add</button>
+            </div>
+          </div>
+          <div style={card}>
+            <label style={lbl}>Team Members</label>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginBottom: 10, marginTop: 0 }}>Used as a dropdown when assigning to-dos in meetings.</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {(form.team_members || []).map((m, i) => (
+                <span key={i} style={{ padding: '6px 14px', background: 'rgba(44,74,46,0.1)', color: 'var(--color-primary)', borderRadius: 100, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500 }}>
+                  {m}
+                  <button onClick={() => removeMember(i)} style={{ color: 'var(--color-muted)', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 0 }}>×</button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={memberInput} onChange={e => setMemberInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addMember())} placeholder="Add a team member…" style={{ ...inp, flex: 1 }} />
+              <button onClick={addMember} style={btnPrimary}>Add</button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -105,7 +118,6 @@ export default function Ownership() {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 20, marginBottom: 32 }}>
-          {/* Mission — most prominent */}
           <div style={{ background: 'var(--color-primary)', borderRadius: 'var(--radius-md)', padding: '32px' }}>
             <p style={{ ...lbl, color: 'rgba(255,255,255,0.55)' }}>Mission</p>
             {mission
@@ -113,8 +125,6 @@ export default function Ownership() {
               : <p style={{ color: 'rgba(255,255,255,0.35)', fontStyle: 'italic', margin: 0 }}>No mission set yet — click <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Edit Settings</strong> to add one.</p>
             }
           </div>
-
-          {/* Vision */}
           <div style={{ ...card, background: '#EDE8DC' }}>
             <p style={lbl}>Vision</p>
             {vision
@@ -122,25 +132,24 @@ export default function Ownership() {
               : <p style={{ color: 'var(--color-muted)', fontStyle: 'italic', margin: 0 }}>No vision set yet.</p>
             }
           </div>
-
-          {/* Values */}
           <div style={card}>
             <p style={lbl}>Values</p>
             {values.length > 0
-              ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  {values.map((v, i) => (
-                    <span key={i} style={{ padding: '8px 20px', background: 'rgba(44,74,46,0.09)', color: 'var(--color-primary)', borderRadius: 100, fontSize: '0.95rem', fontWeight: 600, letterSpacing: '0.02em' }}>{v}</span>
-                  ))}
-                </div>
-              )
+              ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>{values.map((v, i) => <span key={i} style={{ padding: '8px 20px', background: 'rgba(44,74,46,0.09)', color: 'var(--color-primary)', borderRadius: 100, fontSize: '0.95rem', fontWeight: 600, letterSpacing: '0.02em' }}>{v}</span>)}</div>
               : <p style={{ color: 'var(--color-muted)', fontStyle: 'italic', margin: 0 }}>No values set yet.</p>
             }
           </div>
+          {members.length > 0 && (
+            <div style={card}>
+              <p style={lbl}>Team</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {members.map((m, i) => <span key={i} style={{ padding: '8px 20px', background: 'rgba(44,74,46,0.09)', color: 'var(--color-primary)', borderRadius: 100, fontSize: '0.95rem', fontWeight: 600 }}>{m}</span>)}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Quick links — below MVV */}
       <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 28 }}>
         <p style={{ ...lbl, marginBottom: 16 }}>Tools</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

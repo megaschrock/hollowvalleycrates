@@ -191,7 +191,10 @@ create policy "meeting_updates_auth" on meeting_personal_updates for all using (
 create policy "meeting_tp_auth" on meeting_talking_points for all using (auth.role() = 'authenticated');
 create policy "meeting_todos_auth" on meeting_todos for all using (auth.role() = 'authenticated');
 
--- ─── PHASE 5B: RESERVATIONS + MONTHLY REPORTS ─────────────────────────────
+-- ─── PHASE 5B: RESERVATIONS + MONTHLY REPORTS + TEAM ─────────────────────
+
+alter table settings add column if not exists team_members jsonb default '[]'::jsonb;
+
 
 -- Reservations table additions
 alter table reservations add column if not exists discount numeric default 0;
