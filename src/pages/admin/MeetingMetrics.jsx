@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -107,11 +107,14 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
   const [bankBalance, setBankBalance] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const userModifiedRef = useRef(false)
+  const reportRef = useRef(null)
 
   useEffect(() => {
     async function loadReport() {
       const { data } = await supabase.from('monthly_reports').select('*').eq('meeting_id', meetingId).maybeSingle()
       if (data) {
+        reportRef.current = data
         setReport(data)
         setOverrides(data.metrics?.overrides || {})
         setBankBalance(data.metrics?.bankBalance || '')
@@ -130,12 +133,20 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
     loadReport()
   }, [meetingId])
 
+  // Auto-save 1.5s after any user change
+  useEffect(() => {
+    if (!userModifiedRef.current) return
+    const timer = setTimeout(save, 1500)
+    return () => clearTimeout(timer)
+  }, [overrides, expenses, bankBalance]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function val(key, autoVal) {
     const ov = overrides[key]
     return ov !== undefined && ov !== null ? ov : autoVal
   }
 
   function setOverride(key, v) {
+    userModifiedRef.current = true
     setOverrides(prev => {
       if (v === null) {
         const next = { ...prev }
@@ -149,17 +160,20 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
 
   function addExpense() {
     if (!newExpName.trim()) return
+    userModifiedRef.current = true
     setExpenses(prev => [...prev, { id: uid(), name: newExpName.trim(), amount: 0, recurring: false }])
     setNewExpName('')
     setSaved(false)
   }
 
   function updateExp(id, field, value) {
+    userModifiedRef.current = true
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e))
     setSaved(false)
   }
 
   function removeExp(id) {
+    userModifiedRef.current = true
     setExpenses(prev => prev.filter(e => e.id !== id))
     setSaved(false)
   }
@@ -226,16 +240,11 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', margin: 0 }}>{prevLabel} Metrics</h2>
           <p style={{ fontSize: '0.78rem', color: 'var(--color-muted)', margin: '3px 0 0' }}>Auto-calculated from reservations. Click any number to override. 🚩 flags for discussion.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!done && (
-            <button onClick={save} disabled={saving} style={{ padding: '7px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>
-              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
-            </button>
-          )}
-          <button onClick={() => window.print()} style={{ padding: '7px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: 'var(--color-text)', cursor: 'pointer' }}>
-            🖨 Print / PDF
-          </button>
-        </div>
+        {!done && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>
+            {saving ? 'Saving…' : saved ? '✓ Saved' : ''}
+          </span>
+        )}
       </div>
 
       {/* Print header */}
@@ -250,7 +259,7 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
         <div style={sectionLabel}>Bank Balance</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: 'var(--color-muted)', fontSize: '1rem' }}>$</span>
-          <input type="number" value={bankBalance} onChange={e => { setBankBalance(e.target.value); setSaved(false) }} placeholder="Current balance" disabled={done} style={{ ...inp, maxWidth: 180 }} step="0.01" />
+          <input type="number" value={bankBalance} onChange={e => { userModifiedRef.current = true; setBankBalance(e.target.value); setSaved(false) }} placeholder="Current balance" disabled={done} style={{ ...inp, maxWidth: 180 }} step="0.01" />
           {onFlag && !done && (
             <FlagBtn onClick={() => onFlag('Discuss: Bank Balance')} style={{ padding: '4px 8px' }} />
           )}
@@ -313,22 +322,6 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
         </div>
       </div>
 
-      {/* Pricing prompt (replaces rates textarea) */}
-      <div style={{ marginBottom: 18, background: 'rgba(44,74,46,0.04)', border: '1px solid rgba(44,74,46,0.15)', borderRadius: 'var(--radius-md)', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Rates & Pricing</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--color-muted)', marginTop: 2 }}>Decide on rates for next month — weeknight, weekend, and holiday pricing.</div>
-        </div>
-        {onFlag && !done && (
-          <button
-            onClick={() => onFlag('Set rates for next month')}
-            style={{ padding: '7px 14px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-          >
-            🚩 Flag for Discussion
-          </button>
-        )}
-      </div>
-
       {/* Expenses */}
       <div style={{ marginBottom: 16 }}>
         <div style={sectionLabel}>Monthly Expenses</div>
@@ -386,13 +379,6 @@ export default function MeetingMetrics({ meetingId, meetingDate, reservations, d
         )}
       </div>
 
-      {!done && (
-        <div className="no-print" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
-          <button onClick={save} disabled={saving} style={{ padding: '10px 24px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>
-            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Report'}
-          </button>
-        </div>
-      )}
 
       <style>{`
         @media print {

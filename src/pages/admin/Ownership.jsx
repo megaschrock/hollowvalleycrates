@@ -139,14 +139,6 @@ export default function Ownership() {
               : <p style={{ color: 'var(--color-muted)', fontStyle: 'italic', margin: 0 }}>No values set yet.</p>
             }
           </div>
-          {members.length > 0 && (
-            <div style={card}>
-              <p style={lbl}>Team</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {members.map((m, i) => <span key={i} style={{ padding: '8px 20px', background: 'rgba(44,74,46,0.09)', color: 'var(--color-primary)', borderRadius: 100, fontSize: '0.95rem', fontWeight: 600 }}>{m}</span>)}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
