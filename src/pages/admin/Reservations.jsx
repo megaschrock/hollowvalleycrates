@@ -390,9 +390,16 @@ export default function Reservations() {
           <div className="res-table-wrap" style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: '0.82rem', whiteSpace: 'nowrap', width: '100%' }}>
               <thead>
-                <tr style={{ background: 'var(--color-card)', borderBottom: '2px solid var(--color-border)' }}>
-                  {['Source','Check-in','Check-out','Nights','Guest','Email','Phone','Gross','Cleaning','Pet','Discount','Host Fee','Net Payout','DDA','Conf #',''].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--color-muted)', fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 600 }}>{h}</th>
+                <tr>
+                  {['Source','Check-in','Check-out','Nights','Guest','Email','Phone','Gross','Cleaning','Pet','Discount','Host Fee','Net Payout','DDA','Conf #',''].map((h, i) => (
+                    <th key={h} style={{
+                      textAlign: 'left', padding: '10px 14px', color: 'var(--color-muted)',
+                      fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 600,
+                      position: 'sticky', top: 0, background: 'var(--color-card)',
+                      borderBottom: '2px solid var(--color-border)',
+                      zIndex: i === 4 ? 4 : 2,
+                      ...(i === 4 ? { left: 0, boxShadow: '2px 0 4px rgba(0,0,0,0.06)' } : {})
+                    }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -429,7 +436,7 @@ function ReservationRow({ r, idx, onUpdate, onDelete }) {
       <td style={{ padding: '10px 14px' }}>{fmtDate(r.start_date)}</td>
       <td style={{ padding: '10px 14px' }}>{fmtDate(r.end_date)}</td>
       <td style={{ padding: '10px 14px' }}>{r.nights ?? nightsBetween(r.start_date, r.end_date)}</td>
-      <EditCell value={r.guest_name} onSave={v => onUpdate(r.id, 'guest_name', v)} width={140} />
+      <EditCell value={r.guest_name} onSave={v => onUpdate(r.id, 'guest_name', v)} width={140} stickyLeft idx={idx} />
       <EditCell value={r.email} onSave={v => onUpdate(r.id, 'email', v)} width={150} />
       <EditCell value={r.phone} onSave={v => onUpdate(r.id, 'phone', v)} width={110} />
       <EditCell value={r.gross_amount} type="number" onSave={v => onUpdate(r.id, 'gross_amount', v ? parseFloat(v) : null)} width={80} prefix="$" />
@@ -538,7 +545,7 @@ function CardEditField({ label, value, type, onSave }) {
   )
 }
 
-function EditCell({ value, onSave, type = 'text', width = 130, prefix }) {
+function EditCell({ value, onSave, type = 'text', width = 130, prefix, stickyLeft, idx }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value ?? '')
 
@@ -551,8 +558,17 @@ function EditCell({ value, onSave, type = 'text', width = 130, prefix }) {
 
   const displayVal = prefix && val !== '' && val != null ? `${prefix}${Number(val).toFixed(2)}` : val
 
+  const tdStyle = {
+    padding: '10px 14px',
+    ...(stickyLeft ? {
+      position: 'sticky', left: 0, zIndex: 1,
+      background: idx % 2 === 0 ? 'var(--color-bg)' : 'rgb(245,245,245)',
+      boxShadow: '2px 0 4px rgba(0,0,0,0.05)',
+    } : {})
+  }
+
   return (
-    <td style={{ padding: '10px 14px' }}>
+    <td style={tdStyle}>
       {editing ? (
         <input autoFocus type={type} value={val} onChange={e => setVal(e.target.value)} onBlur={save}
           onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(value ?? ''); setEditing(false) } }}
