@@ -190,3 +190,28 @@ create policy "meetings_auth" on meetings for all using (auth.role() = 'authenti
 create policy "meeting_updates_auth" on meeting_personal_updates for all using (auth.role() = 'authenticated');
 create policy "meeting_tp_auth" on meeting_talking_points for all using (auth.role() = 'authenticated');
 create policy "meeting_todos_auth" on meeting_todos for all using (auth.role() = 'authenticated');
+
+-- ─── PHASE 5B: RESERVATIONS + MONTHLY REPORTS ─────────────────────────────
+
+-- Reservations table additions
+alter table reservations add column if not exists discount numeric default 0;
+alter table reservations add column if not exists host_fee numeric default 0;
+alter table reservations add column if not exists entered_in_dda boolean default false;
+
+-- Ensure reservations has RLS and auth policy
+alter table reservations enable row level security;
+create policy if not exists "reservations_auth" on reservations for all using (auth.role() = 'authenticated');
+
+-- Monthly reports (metrics snapshots tied to a meeting)
+create table if not exists monthly_reports (
+  id           uuid primary key default gen_random_uuid(),
+  meeting_id   uuid references meetings(id) on delete set null,
+  report_month date not null,
+  metrics      jsonb not null default '{}',
+  expenses     jsonb not null default '{}',
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now()
+);
+
+alter table monthly_reports enable row level security;
+create policy "monthly_reports_auth" on monthly_reports for all using (auth.role() = 'authenticated');

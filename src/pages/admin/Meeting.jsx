@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import MeetingMetrics from './MeetingMetrics'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -67,7 +68,7 @@ export default function Meeting() {
         supabase.from('objectives').select('*').eq('archived', false).order('sort_order').order('created_at', { ascending: false }),
         supabase.from('meeting_talking_points').select('*').eq('meeting_id', id).order('sort_order').order('created_at'),
         supabase.from('meeting_todos').select('*').eq('created_meeting_id', id).order('created_at'),
-        supabase.from('reservations').select('start_date,nights,net_payout'),
+        supabase.from('reservations').select('*'),
         supabase.from('meeting_todos').select('*').eq('completed', false).order('created_at'),
       ])
       setMeeting(mtg)
@@ -245,39 +246,21 @@ export default function Meeting() {
         {/* B — Monthly Metrics */}
         {step === 1 && (
           <div>
-            <SectionHeader letter="B" label={`Monthly Metrics — ${MONTHS[cm]} ${cy}`} color="#1a5276" />
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic', marginBottom: 16 }}>
-              All figures vs. {MONTHS_SHORT[cm]} {cy - 1}.
-            </p>
-            <div className="metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 24 }}>
-              {metrics.map((m, i) => {
-                const diff = m.prior != null ? m.value - m.prior : null
-                const pct  = m.prior > 0 && diff != null ? Math.round((diff / m.prior) * 100) : null
-                const up   = pct != null && pct > 0
-                const dn   = pct != null && pct < 0
-                return (
-                  <div key={i} style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '14px 16px' }}>
-                    <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-muted)', marginBottom: 4 }}>{m.name}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-text)', lineHeight: 1.1, marginBottom: 4 }}>
-                      {m.value != null ? m.fmt(m.value) : '—'}
-                    </div>
-                    {m.prior != null && (
-                      <div style={{ fontSize: '0.72rem', color: up ? '#2C4A2E' : dn ? '#a33' : 'var(--color-muted)' }}>
-                        {pct != null ? (up ? `↑ ${pct}%` : dn ? `↓ ${Math.abs(pct)}%` : '= 0%') : ''}
-                        {' '}vs {MONTHS_SHORT[cm]} {cy - 1} <span style={{ color: 'var(--color-muted)' }}>({m.fmt(m.prior)})</span>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            <MeetingMetrics
+              meetingId={id}
+              meetingDate={meeting.meeting_date}
+              reservations={reservations}
+              done={done}
+            />
             {!done && (
-              <QuickAddTP
-                value={quickTP}
-                onChange={setQuickTP}
-                onAdd={() => addQuickTP('Monthly Metrics')}
-                placeholder="Flag a metric for group discussion…"
-              />
+              <div style={{ marginTop: 20 }}>
+                <QuickAddTP
+                  value={quickTP}
+                  onChange={setQuickTP}
+                  onAdd={() => addQuickTP('Monthly Metrics')}
+                  placeholder="Flag a metric for group discussion…"
+                />
+              </div>
             )}
           </div>
         )}
