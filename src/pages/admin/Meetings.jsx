@@ -31,6 +31,11 @@ export default function Meetings() {
     }
   }
 
+  async function deleteMeeting(id) {
+    await supabase.from('meetings').delete().eq('id', id)
+    setMeetings(prev => prev.filter(m => m.id !== id))
+  }
+
   function fmtDate(d) {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   }
@@ -70,7 +75,7 @@ export default function Meetings() {
             <div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', letterSpacing: '0.06em', color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: 12 }}>In Progress</h2>
               <div style={{ display: 'grid', gap: 10 }}>
-                {inProgress.map(m => <MeetingRow key={m.id} m={m} fmtDate={fmtDate} fmtTime={fmtTime} />)}
+                {inProgress.map(m => <MeetingRow key={m.id} m={m} fmtDate={fmtDate} fmtTime={fmtTime} onDelete={deleteMeeting} />)}
               </div>
             </div>
           )}
@@ -78,7 +83,7 @@ export default function Meetings() {
             <div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', letterSpacing: '0.06em', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: 12 }}>Past Meetings</h2>
               <div style={{ display: 'grid', gap: 10 }}>
-                {completed.map(m => <MeetingRow key={m.id} m={m} fmtDate={fmtDate} fmtTime={fmtTime} />)}
+                {completed.map(m => <MeetingRow key={m.id} m={m} fmtDate={fmtDate} fmtTime={fmtTime} onDelete={deleteMeeting} />)}
               </div>
             </div>
           )}
@@ -88,17 +93,57 @@ export default function Meetings() {
   )
 }
 
-function MeetingRow({ m, fmtDate, fmtTime }) {
+function MeetingRow({ m, fmtDate, fmtTime, onDelete }) {
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const inProg = m.status === 'in_progress'
+
+  async function handleDelete(e) {
+    e.preventDefault()
+    setDeleting(true)
+    await onDelete(m.id)
+  }
+
   return (
-    <Link to={`/admin/meetings/${m.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, background: 'var(--color-card)', border: `1px solid ${inProg ? 'rgba(44,74,46,0.3)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', padding: '18px 24px', textDecoration: 'none', color: 'inherit' }}>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 3 }}>{fmtDate(m.meeting_date)}</div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>{fmtTime(m.created_at)}</div>
-      </div>
-      <span style={{ padding: '4px 12px', borderRadius: 100, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0, ...(inProg ? { background: 'rgba(44,74,46,0.12)', color: 'var(--color-primary)' } : { background: 'rgba(85,85,85,0.07)', color: 'var(--color-muted)' }) }}>
-        {inProg ? '● In Progress' : 'Completed'}
-      </span>
-    </Link>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Link
+        to={`/admin/meetings/${m.id}`}
+        style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, background: 'var(--color-card)', border: `1px solid ${inProg ? 'rgba(44,74,46,0.3)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', padding: '18px 24px', textDecoration: 'none', color: 'inherit' }}
+      >
+        <div>
+          <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 3 }}>{fmtDate(m.meeting_date)}</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--color-muted)' }}>{fmtTime(m.created_at)}</div>
+        </div>
+        <span style={{ padding: '4px 12px', borderRadius: 100, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0, ...(inProg ? { background: 'rgba(44,74,46,0.12)', color: 'var(--color-primary)' } : { background: 'rgba(85,85,85,0.07)', color: 'var(--color-muted)' }) }}>
+          {inProg ? '● In Progress' : 'Completed'}
+        </span>
+      </Link>
+
+      {confirming ? (
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            style={{ padding: '8px 14px', background: '#a33', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', fontWeight: 600, cursor: deleting ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {deleting ? 'Deleting…' : 'Yes, delete'}
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            style={{ padding: '8px 10px', background: 'none', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirming(true)}
+          title="Delete meeting"
+          style={{ padding: '8px 10px', background: 'none', color: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', flexShrink: 0, lineHeight: 1 }}
+        >
+          ×
+        </button>
+      )}
+    </div>
   )
 }

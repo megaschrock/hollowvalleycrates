@@ -54,25 +54,11 @@ export default function Ownership() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', letterSpacing: '0.03em', margin: 0 }}>Ownership OS</h1>
-        {!editing && <button onClick={startEdit} style={btnSecondary}>Edit</button>}
-      </div>
-
-      {/* Quick links */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
-        <Link to="/admin/meetings" style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)', padding: '20px 24px', textDecoration: 'none', display: 'block' }}>
-          <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>▶</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', letterSpacing: '0.02em' }}>Meetings</div>
-          <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: 2 }}>Start or review sessions</div>
-        </Link>
-        <Link to="/admin/objectives" style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text)', borderRadius: 'var(--radius-md)', padding: '20px 24px', textDecoration: 'none', display: 'block' }}>
-          <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>◎</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', letterSpacing: '0.02em' }}>Objectives</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>Bi-annual goals</div>
-        </Link>
+        {!editing && <button onClick={startEdit} style={btnSecondary}>Edit Settings</button>}
       </div>
 
       {editing && form ? (
-        <div style={{ display: 'grid', gap: 20 }}>
+        <div style={{ display: 'grid', gap: 20, marginBottom: 32 }}>
           <div style={card}>
             <label style={lbl}>Mission</label>
             <textarea
@@ -118,15 +104,17 @@ export default function Ownership() {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 20 }}>
+        <div style={{ display: 'grid', gap: 20, marginBottom: 32 }}>
+          {/* Mission — most prominent */}
           <div style={{ background: 'var(--color-primary)', borderRadius: 'var(--radius-md)', padding: '32px' }}>
             <p style={{ ...lbl, color: 'rgba(255,255,255,0.55)' }}>Mission</p>
             {mission
               ? <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: '#fff', lineHeight: 1.5, margin: 0 }}>{mission}</p>
-              : <p style={{ color: 'rgba(255,255,255,0.35)', fontStyle: 'italic', margin: 0 }}>No mission set yet — click Edit to add one.</p>
+              : <p style={{ color: 'rgba(255,255,255,0.35)', fontStyle: 'italic', margin: 0 }}>No mission set yet — click <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Edit Settings</strong> to add one.</p>
             }
           </div>
 
+          {/* Vision */}
           <div style={{ ...card, background: '#EDE8DC' }}>
             <p style={lbl}>Vision</p>
             {vision
@@ -135,6 +123,7 @@ export default function Ownership() {
             }
           </div>
 
+          {/* Values */}
           <div style={card}>
             <p style={lbl}>Values</p>
             {values.length > 0
@@ -150,6 +139,23 @@ export default function Ownership() {
           </div>
         </div>
       )}
+
+      {/* Quick links — below MVV */}
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 28 }}>
+        <p style={{ ...lbl, marginBottom: 16 }}>Tools</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <Link to="/admin/meetings" style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)', padding: '20px 24px', textDecoration: 'none', display: 'block' }}>
+            <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>▶</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', letterSpacing: '0.02em' }}>Meetings</div>
+            <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: 2 }}>Start or review sessions</div>
+          </Link>
+          <Link to="/admin/objectives" style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text)', borderRadius: 'var(--radius-md)', padding: '20px 24px', textDecoration: 'none', display: 'block' }}>
+            <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>◎</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', letterSpacing: '0.02em' }}>Objectives & To-Dos</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>Bi-annual goals & action items</div>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

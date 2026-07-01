@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 const navItems = [
   { header: 'Ownership OS' },
   { to: '/admin/ownership', label: 'Ownership' },
-  { to: '/admin/objectives', label: 'Action Items' },
+  { to: '/admin/objectives', label: 'Objectives' },
   { to: '/admin/meetings', label: 'Meetings' },
   { header: 'Operations' },
   { to: '/admin/dashboard', label: 'Dashboard' },

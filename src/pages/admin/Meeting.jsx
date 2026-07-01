@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 function monthOf(s) { return new Date(s + 'T12:00:00').getMonth() }
 function yearOf(s) { return new Date(s + 'T12:00:00').getFullYear() }
@@ -49,8 +50,8 @@ export default function Meeting() {
       ] = await Promise.all([
         supabase.from('meetings').select('*').eq('id', id).single(),
         supabase.from('meeting_personal_updates').select('*').eq('meeting_id', id).order('created_at'),
-        supabase.from('objectives').select('*').eq('archived', false).order('created_at', { ascending: false }),
-        supabase.from('meeting_talking_points').select('*').eq('meeting_id', id).order('created_at'),
+        supabase.from('objectives').select('*').eq('archived', false).order('sort_order').order('created_at', { ascending: false }),
+        supabase.from('meeting_talking_points').select('*').eq('meeting_id', id).order('sort_order').order('created_at'),
         supabase.from('meeting_todos').select('*').eq('created_meeting_id', id).order('created_at'),
         supabase.from('reservations').select('start_date,nights,net_payout'),
         supabase.from('meeting_todos').select('*').eq('completed', false).order('created_at'),
@@ -90,12 +91,12 @@ export default function Meeting() {
   const ytdRevLY = revenueOf(ytdLY)
 
   const metrics = [
-    { name: 'Nights This Month', value: tmNights, prior: lyNights, fmt: n => String(n) },
-    { name: 'Revenue This Month', value: tmRev, prior: lyRev, fmt: fmt$ },
-    { name: 'Occupancy This Month', value: tmOcc, prior: lyOcc, fmt: n => `${n}%` },
-    { name: 'ADR This Month', value: tmADR, prior: null, fmt: fmt$ },
-    { name: 'YTD Nights', value: ytdNights, prior: ytdNightsLY, fmt: n => String(n) },
-    { name: 'YTD Revenue', value: ytdRev, prior: ytdRevLY, fmt: fmt$ },
+    { name: 'Nights Sold', value: tmNights, prior: lyNights, fmt: n => String(n), unit: 'nights' },
+    { name: 'Cash Flow', value: tmRev, prior: lyRev, fmt: fmt$, unit: 'net payout' },
+    { name: 'Occupancy', value: tmOcc, prior: lyOcc, fmt: n => `${n}%`, unit: 'of days' },
+    { name: 'Avg Daily Rate', value: tmADR, prior: null, fmt: fmt$, unit: 'per night' },
+    { name: 'YTD Nights', value: ytdNights, prior: ytdNightsLY, fmt: n => String(n), unit: 'nights' },
+    { name: 'YTD Cash Flow', value: ytdRev, prior: ytdRevLY, fmt: fmt$, unit: 'net payout' },
   ]
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -143,6 +144,11 @@ export default function Meeting() {
   async function resolveTP(tpId) {
     await supabase.from('meeting_talking_points').update({ resolved: true }).eq('id', tpId)
     setTalkingPoints(prev => prev.map(tp => tp.id === tpId ? { ...tp, resolved: true } : tp))
+  }
+
+  async function deleteTP(tpId) {
+    await supabase.from('meeting_talking_points').delete().eq('id', tpId)
+    setTalkingPoints(prev => prev.filter(tp => tp.id !== tpId))
   }
 
   async function addTP() {
@@ -205,7 +211,7 @@ export default function Meeting() {
 
       {/* Jump links */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
-        {[['A','Personal','#sec-a'],['B','Metrics','#sec-b'],['C','Objectives','#sec-c'],['D','To-dos','#sec-d'],['E','Talking Points','#sec-e'],['F','Review','#sec-f']].map(([letter, label, href]) => (
+        {[['A','Personal Updates','#sec-a'],['B','Monthly Metrics','#sec-b'],['C','Objectives','#sec-c'],['D','Open To-Dos','#sec-d'],['E','Talking Points','#sec-e'],['F','To-Do Review','#sec-f']].map(([letter, label, href]) => (
           <a key={letter} href={href} style={{ padding: '5px 13px', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}>
             <strong>{letter}</strong> {label}
           </a>
@@ -217,6 +223,7 @@ export default function Meeting() {
         {/* ── A. Personal Updates ───────────────────────────────── */}
         <div id="sec-a">
           <MeetingSection letter="A" label="Personal Updates" color="#2C4A2E" headerBg="rgba(44,74,46,0.07)">
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>How is everyone doing? Capture a quick check-in for each person.</p>
             {updates.length > 0 && (
               <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
                 {updates.map(u => (
@@ -226,7 +233,15 @@ export default function Meeting() {
                       {u.update_text && <p style={{ margin: '3px 0 0', color: 'var(--color-muted)', fontSize: '0.85rem', lineHeight: 1.4 }}>{u.update_text}</p>}
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      {!done && <FlagBtn on={flagged.has(`upd-${u.id}`)} onClick={() => flagToTP(`${u.person_name}'s update`, 'personal_update', u.person_name, `upd-${u.id}`)} />}
+                      {!done && (
+                        <DiscussBtn
+                          on={flagged.has(`upd-${u.id}`)}
+                          onClick={() => flagToTP(
+                            u.update_text ? `${u.person_name}: "${u.update_text}"` : `${u.person_name}'s update`,
+                            'personal_update', u.person_name, `upd-${u.id}`
+                          )}
+                        />
+                      )}
                       {!done && <button onClick={() => deleteUpdate(u.id)} style={delBtn}>×</button>}
                     </div>
                   </div>
@@ -247,11 +262,15 @@ export default function Meeting() {
         {/* ── B. Monthly Metrics ────────────────────────────────── */}
         <div id="sec-b">
           <MeetingSection letter="B" label={`Monthly Metrics — ${MONTHS[cm]} ${cy}`} color="#1a5276" headerBg="rgba(26,82,118,0.07)">
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>
+              All figures vs. {MONTHS_SHORT[cm]} {cy - 1}. Flag any metric that needs group discussion.
+            </p>
             <div className="metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               {metrics.map((m, i) => {
                 const key = `metric-${i}`
                 const diff = m.prior != null ? m.value - m.prior : null
                 const pct = m.prior > 0 && diff != null ? Math.round((diff / m.prior) * 100) : null
+                const trending = pct != null ? (pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat') : null
                 return (
                   <div key={i} style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', padding: '13px 14px' }}>
                     <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-muted)', marginBottom: 4 }}>{m.name}</div>
@@ -259,12 +278,14 @@ export default function Meeting() {
                       {m.value != null ? m.fmt(m.value) : '—'}
                     </div>
                     {m.prior != null && (
-                      <div style={{ fontSize: '0.72rem', color: pct > 0 ? '#2C4A2E' : pct < 0 ? '#a33' : 'var(--color-muted)', marginBottom: 8 }}>
-                        {pct != null ? (pct > 0 ? `↑ ${pct}%` : pct < 0 ? `↓ ${Math.abs(pct)}%` : '= 0%') : ''} vs {MONTHS[cm]} {cy - 1} ({m.fmt(m.prior)})
+                      <div style={{ fontSize: '0.72rem', color: trending === 'up' ? '#2C4A2E' : trending === 'down' ? '#a33' : 'var(--color-muted)', marginBottom: 8 }}>
+                        {pct != null ? (pct > 0 ? `↑ ${pct}%` : pct < 0 ? `↓ ${Math.abs(pct)}%` : '= 0%') : ''}
+                        {' '}vs {MONTHS_SHORT[cm]} {cy - 1}
+                        {m.prior != null && <span style={{ color: 'var(--color-muted)', fontWeight: 400 }}> ({m.fmt(m.prior)})</span>}
                       </div>
                     )}
                     {!done && (
-                      <FlagBtn on={flagged.has(key)} onClick={() => flagToTP(`${m.name}: ${m.value != null ? m.fmt(m.value) : '—'}`, 'metric', m.name, key)} />
+                      <DiscussBtn on={flagged.has(key)} onClick={() => flagToTP(`${m.name}: ${m.value != null ? m.fmt(m.value) : '—'} (${trending === 'up' ? '↑' : trending === 'down' ? '↓' : '='} vs last year)`, 'metric', m.name, key)} />
                     )}
                   </div>
                 )
@@ -276,6 +297,7 @@ export default function Meeting() {
         {/* ── C. Objectives ─────────────────────────────────────── */}
         <div id="sec-c">
           <MeetingSection letter="C" label="Objectives" color="#6c3483" headerBg="rgba(108,52,131,0.07)">
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>Bi-annual goals — update status and flag any that need discussion.</p>
             {objectives.length === 0
               ? <p style={{ margin: 0, color: 'var(--color-muted)', fontSize: '0.875rem' }}>No active objectives. <Link to="/admin/objectives" style={{ color: 'var(--color-primary)' }}>Add some →</Link></p>
               : (
@@ -284,7 +306,7 @@ export default function Meeting() {
                     const key = `obj-${obj.id}`
                     const s = STATUS_MAP[obj.status] || STATUS_MAP.on_track
                     return (
-                      <div key={obj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap' }}>
+                      <div key={obj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap', borderLeft: `3px solid ${s.borderColor}` }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{obj.title}</div>
                           {obj.description && <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: 2 }}>{obj.description}</div>}
@@ -292,9 +314,10 @@ export default function Meeting() {
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg }}>{s.label}</span>
-                          {!done && obj.status !== 'on_track' && <button onClick={() => updateObjStatus(obj.id, 'on_track')} style={smallBtn('#2C4A2E', 'rgba(44,74,46,0.1)')}>→ On Track</button>}
-                          {!done && obj.status !== 'off_track' && <button onClick={() => updateObjStatus(obj.id, 'off_track')} style={smallBtn('#a33', 'rgba(170,51,51,0.1)')}>→ Off Track</button>}
-                          {!done && <FlagBtn on={flagged.has(key)} onClick={() => flagToTP(`Objective: ${obj.title}`, 'objective', obj.title, key)} />}
+                          {!done && obj.status !== 'on_track' && <button onClick={() => updateObjStatus(obj.id, 'on_track')} style={smallBtn('#2C4A2E', 'rgba(44,74,46,0.1)')}>✓ On Track</button>}
+                          {!done && obj.status !== 'off_track' && <button onClick={() => updateObjStatus(obj.id, 'off_track')} style={smallBtn('#a33', 'rgba(170,51,51,0.1)')}>⚠ Off Track</button>}
+                          {!done && obj.status !== 'complete' && <button onClick={() => updateObjStatus(obj.id, 'complete')} style={smallBtn('#555', 'rgba(85,85,85,0.1)')}>✓ Complete</button>}
+                          {!done && <DiscussBtn on={flagged.has(key)} onClick={() => flagToTP(`Objective off track: ${obj.title}`, 'objective', obj.title, key)} />}
                         </div>
                       </div>
                     )
@@ -305,9 +328,10 @@ export default function Meeting() {
           </MeetingSection>
         </div>
 
-        {/* ── D. Open To-dos ────────────────────────────────────── */}
+        {/* ── D. Open To-Dos ────────────────────────────────────── */}
         <div id="sec-d">
-          <MeetingSection letter="D" label="Open To-dos" color="#784212" headerBg="rgba(120,66,18,0.07)">
+          <MeetingSection letter="D" label="Open To-Dos" color="#784212" headerBg="rgba(120,66,18,0.07)" badge={openTodos.length > 0 ? `${openTodos.length} open` : null} badgeColor="#784212">
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>Action items from previous meetings that haven't been marked done.</p>
             {openTodos.length === 0
               ? <Empty text="No open to-dos from previous meetings." />
               : (
@@ -315,23 +339,26 @@ export default function Meeting() {
                   {openTodos.map(t => {
                     const key = `todo-${t.id}`
                     const overdue = t.due_date && new Date(t.due_date + 'T12:00:00') < now
+                    const age = t.created_at ? Math.floor((now - new Date(t.created_at)) / (1000 * 60 * 60 * 24)) : null
+                    const stale = age != null && age > 30
                     return (
-                      <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)' }}>
+                      <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', borderLeft: overdue || stale ? '3px solid #a33' : '3px solid transparent' }}>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{t.title}</span>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 2 }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {t.assigned_to && <span>{t.assigned_to}</span>}
                             {t.due_date && (
-                              <span style={{ color: overdue ? '#a33' : 'var(--color-muted)', marginLeft: t.assigned_to ? 8 : 0 }}>
+                              <span style={{ color: overdue ? '#a33' : 'var(--color-muted)' }}>
                                 Due {new Date(t.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{overdue ? ' ⚠' : ''}
                               </span>
                             )}
+                            {stale && <span style={{ color: '#a33' }}>Open {age}d ⚠</span>}
                           </div>
                         </div>
                         {!done && (
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => completeTodo(t.id)} style={smallBtn('#2C4A2E', 'rgba(44,74,46,0.1)')}>✓ Done</button>
-                            <FlagBtn on={flagged.has(key)} onClick={() => flagToTP(`To-do: ${t.title}`, 'todo', t.title, key)} />
+                            <DiscussBtn on={flagged.has(key)} onClick={() => flagToTP(`To-do still open: ${t.title}`, 'todo', t.title, key)} />
                           </div>
                         )}
                       </div>
@@ -346,20 +373,31 @@ export default function Meeting() {
         {/* ── E. Talking Points ─────────────────────────────────── */}
         <div id="sec-e">
           <MeetingSection letter="E" label="Talking Points" color="#a33" headerBg="rgba(170,51,51,0.07)" badge={unresolved > 0 ? `${unresolved} unresolved` : null} badgeColor="#a33">
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>
+              Agenda items for this meeting. Flag anything from sections A–D above to bring it here, or add items directly.
+            </p>
             <div style={{ display: 'grid', gap: 10 }}>
-              {talkingPoints.length === 0 && <Empty text="No talking points yet. Flag items above or add one below." />}
+              {talkingPoints.length === 0 && !done && <Empty text="Nothing flagged yet — use the Discuss buttons above to pull items in, or add one below." />}
+              {talkingPoints.length === 0 && done && <Empty text="No talking points were recorded." />}
               {talkingPoints.map(tp => (
                 <div key={tp.id} style={{ padding: '13px 15px', background: tp.resolved ? 'rgba(85,85,85,0.04)' : 'var(--color-bg)', borderRadius: 'var(--radius-sm)', borderLeft: `3px solid ${tp.resolved ? 'var(--color-border)' : '#a33'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: tp.resolved ? 0 : 8 }}>
                     <div>
                       <span style={{ fontWeight: 600, fontSize: '0.9rem', color: tp.resolved ? 'var(--color-muted)' : 'var(--color-text)', textDecoration: tp.resolved ? 'line-through' : 'none' }}>{tp.content}</span>
                       {tp.source_type !== 'manual' && (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginLeft: 8, textTransform: 'capitalize' }}>from {tp.source_type.replace('_', ' ')}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)', marginLeft: 8 }}>
+                          from {SOURCE_LABELS[tp.source_type] || tp.source_type}
+                        </span>
                       )}
                     </div>
-                    {!done && !tp.resolved && (
-                      <button onClick={() => resolveTP(tp.id)} style={smallBtn('#555', 'rgba(85,85,85,0.08)')}>✓ Resolved</button>
-                    )}
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {!done && !tp.resolved && (
+                        <button onClick={() => resolveTP(tp.id)} style={smallBtn('#555', 'rgba(85,85,85,0.08)')}>✓ Resolved</button>
+                      )}
+                      {!done && (
+                        <button onClick={() => deleteTP(tp.id)} style={delBtn}>×</button>
+                      )}
+                    </div>
                   </div>
                   {!tp.resolved && (
                     <textarea
@@ -387,18 +425,19 @@ export default function Meeting() {
           </MeetingSection>
         </div>
 
-        {/* ── F. To-do Review ───────────────────────────────────── */}
+        {/* ── F. To-Do Review ───────────────────────────────────── */}
         <div id="sec-f">
-          <MeetingSection letter="F" label="To-do Review" color="#1a8a4a" headerBg="rgba(26,138,74,0.07)">
+          <MeetingSection letter="F" label="To-Do Review" color="#1a8a4a" headerBg="rgba(26,138,74,0.07)" badge={meetingTodos.length > 0 ? `${meetingTodos.length} item${meetingTodos.length !== 1 ? 's' : ''}` : null} badgeColor="#1a8a4a">
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>Everything decided in this meeting that needs to get done. Assign and set due dates.</p>
             {meetingTodos.length > 0 && (
               <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
                 {meetingTodos.map(t => (
                   <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)' }}>
                     <div style={{ flex: 1 }}>
                       <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{t.title}</span>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
                         {t.assigned_to && <span>{t.assigned_to}</span>}
-                        {t.due_date && <span style={{ marginLeft: t.assigned_to ? 8 : 0 }}>Due {new Date(t.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+                        {t.due_date && <span>Due {new Date(t.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
                       </div>
                     </div>
                     {!done && <button onClick={() => removeMeetingTodo(t.id)} style={delBtn}>×</button>}
@@ -409,7 +448,7 @@ export default function Meeting() {
             {done && meetingTodos.length === 0 && <Empty text="No action items from this meeting." />}
             {!done && (
               <div className="meeting-row-4" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8 }}>
-                <input value={newTodo.title} onChange={e => setNewTodo(f => ({ ...f, title: e.target.value }))} placeholder="Action item…" style={inp} />
+                <input value={newTodo.title} onChange={e => setNewTodo(f => ({ ...f, title: e.target.value }))} onKeyDown={e => e.key === 'Enter' && addMeetingTodo()} placeholder="What needs to get done?" style={inp} />
                 <input value={newTodo.assigned_to} onChange={e => setNewTodo(f => ({ ...f, assigned_to: e.target.value }))} placeholder="Assigned to" style={inp} />
                 <input type="date" value={newTodo.due_date} onChange={e => setNewTodo(f => ({ ...f, due_date: e.target.value }))} style={inp} />
                 <button onClick={addMeetingTodo} style={addBtn}>Add</button>
@@ -449,10 +488,25 @@ function MeetingSection({ letter, label, color, headerBg, badge, badgeColor, chi
   )
 }
 
-function FlagBtn({ on, onClick }) {
+function DiscussBtn({ on, onClick }) {
   return (
-    <button onClick={onClick} disabled={on} style={{ padding: '4px 10px', background: on ? 'rgba(170,51,51,0.1)' : 'none', color: on ? '#a33' : 'var(--color-muted)', border: `1px solid ${on ? 'rgba(170,51,51,0.25)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-sm)', fontSize: '0.73rem', cursor: on ? 'default' : 'pointer', whiteSpace: 'nowrap', fontWeight: 500 }}>
-      {on ? '✓ Added' : '→ TP'}
+    <button
+      onClick={onClick}
+      disabled={on}
+      title={on ? 'Added to talking points' : 'Flag for group discussion'}
+      style={{
+        padding: '4px 10px',
+        background: on ? 'rgba(170,51,51,0.1)' : 'none',
+        color: on ? '#a33' : 'var(--color-muted)',
+        border: `1px solid ${on ? 'rgba(170,51,51,0.25)' : 'var(--color-border)'}`,
+        borderRadius: 'var(--radius-sm)',
+        fontSize: '0.73rem',
+        cursor: on ? 'default' : 'pointer',
+        whiteSpace: 'nowrap',
+        fontWeight: 500,
+      }}
+    >
+      {on ? '✓ In Discussion' : '⚑ Discuss'}
     </button>
   )
 }
@@ -462,7 +516,14 @@ function Empty({ text }) {
 }
 
 const STATUS_MAP = {
-  on_track: { label: 'On Track', color: '#2C4A2E', bg: 'rgba(44,74,46,0.1)' },
-  off_track: { label: 'Off Track', color: '#a33', bg: 'rgba(170,51,51,0.1)' },
-  complete: { label: 'Complete', color: '#555', bg: 'rgba(85,85,85,0.1)' },
+  on_track: { label: 'On Track', color: '#2C4A2E', bg: 'rgba(44,74,46,0.1)', borderColor: 'rgba(44,74,46,0.3)' },
+  off_track: { label: 'Off Track', color: '#a33', bg: 'rgba(170,51,51,0.1)', borderColor: 'rgba(170,51,51,0.4)' },
+  complete: { label: 'Complete', color: '#555', bg: 'rgba(85,85,85,0.1)', borderColor: 'rgba(85,85,85,0.2)' },
+}
+
+const SOURCE_LABELS = {
+  personal_update: 'personal update',
+  metric: 'monthly metrics',
+  objective: 'objectives',
+  todo: 'open to-dos',
 }
