@@ -1,18 +1,15 @@
-import { useEffect, useState, useRef } from 'react'
-import { supabase } from '../../lib/supabase'
+import { useState, useEffect, useRef } from 'react'
 
-export default function Gallery() {
-  const [photos, setPhotos] = useState([])
+function transformUrl(url, width, quality = 75) {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url
+  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + `?width=${width}&quality=${quality}`
+}
+
+export default function Gallery({ photos }) {
   const [lightbox, setLightbox] = useState(null)
   const [current, setCurrent] = useState(0)
   const touchStart = useRef(null)
   const touchEnd = useRef(null)
-
-  useEffect(() => {
-    supabase.from('photos').select('*').order('display_order').then(({ data }) => {
-      if (data) setPhotos(data)
-    })
-  }, [])
 
   useEffect(() => {
     function onKey(e) {
@@ -42,9 +39,16 @@ export default function Gallery() {
         {photos.map((photo, i) => (
           <div key={photo.id} onClick={() => { setLightbox(photo); setCurrent(i) }}
             style={{ cursor: 'pointer', aspectRatio: '4/3', overflow: 'hidden', borderRadius: 'var(--radius-sm)', background: 'var(--color-card)' }}>
-            <img src={photo.url} alt={photo.caption || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
+            <img
+              src={transformUrl(photo.url, 800)}
+              onError={e => { e.currentTarget.src = photo.url }}
+              alt={photo.caption || ''}
+              loading="lazy"
+              decoding="async"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
               onMouseOver={e => e.currentTarget.style.transform = 'scale(1.04)'}
-              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} />
+              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+            />
           </div>
         ))}
       </div>
@@ -62,7 +66,14 @@ export default function Gallery() {
         >
           {photos.map(photo => (
             <div key={photo.id} style={{ flex: '0 0 85vw', scrollSnapAlign: 'start', aspectRatio: '4/3', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--color-card)' }}>
-              <img src={photo.url} alt={photo.caption || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={transformUrl(photo.url, 900)}
+                onError={e => { e.currentTarget.src = photo.url }}
+                alt={photo.caption || ''}
+                loading="lazy"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
           ))}
         </div>

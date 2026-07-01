@@ -1,24 +1,13 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+function transformUrl(url, width, quality = 80) {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url
+  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + `?width=${width}&quality=${quality}`
+}
 
-export default function Hero({ settings }) {
-  const [heroPhoto, setHeroPhoto] = useState(null)
+export default function Hero({ settings, photos }) {
+  const heroUrl = photos.length ? transformUrl(photos[0].url, 1920, 80) : null
 
-  useEffect(() => {
-    async function fetchFirstPhoto() {
-      const { data } = await supabase
-        .from('photos')
-        .select('url')
-        .order('display_order', { ascending: true })
-        .limit(1)
-        .single()
-      if (data) setHeroPhoto(data.url)
-    }
-    fetchFirstPhoto()
-  }, [])
-
-  const heroStyle = heroPhoto
-    ? { backgroundImage: `url(${heroPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  const heroStyle = heroUrl
+    ? { backgroundImage: `url(${heroUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : { background: 'var(--color-primary)' }
 
   return (
