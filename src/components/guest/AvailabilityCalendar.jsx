@@ -38,6 +38,7 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
   const [blockedDates, setBlockedDates] = useState(new Set())
   const [baseRates, setBaseRates] = useState({})
   const [overrides, setOverrides] = useState([])
+  const [cleaningFee, setCleaningFee] = useState(null)
   const [today] = useState(() => toDateStr(new Date()))
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date()
@@ -48,11 +49,12 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
 
   useEffect(() => {
     async function load() {
-      const [{ data: manual }, { data: ical }, { data: base }, { data: ovr }] = await Promise.all([
+      const [{ data: manual }, { data: ical }, { data: base }, { data: ovr }, { data: settings }] = await Promise.all([
         supabase.from('blocked_dates').select('start_date,end_date'),
         supabase.from('cached_ical_blocks').select('start_date,end_date'),
         supabase.from('pricing_base').select('*').order('day_of_week'),
         supabase.from('pricing_overrides').select('*'),
+        supabase.from('settings').select('cleaning_fee').eq('id', 1).single(),
       ])
       const all = new Set()
       for (const row of [...(manual || []), ...(ical || [])]) {
@@ -63,6 +65,8 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
       for (const row of (base || [])) rateMap[row.day_of_week] = row.rate
       setBaseRates(rateMap)
       setOverrides(ovr || [])
+      const fee = parseFloat(settings?.cleaning_fee)
+      if (!isNaN(fee) && fee > 0) setCleaningFee(fee)
     }
     load()
   }, [])
@@ -248,11 +252,23 @@ export default function AvailabilityCalendar({ onDatesSelected, selectedCheckin,
                 </div>
               ))}
             </div>
-            <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-              <span>Subtotal</span>
-              <span>${breakdown.subtotal.toLocaleString()}</span>
+            <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 12, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                <span>Subtotal</span>
+                <span>${breakdown.subtotal.toLocaleString()}</span>
+              </div>
+              {cleaningFee && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-muted)' }}>
+                  <span>Cleaning fee</span>
+                  <span>${cleaningFee.toLocaleString()}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: 10, marginTop: 2 }}>
+                <span>Total</span>
+                <span>${(breakdown.subtotal + (cleaningFee || 0)).toLocaleString()}</span>
+              </div>
             </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 8 }}>Cleaning fee and pet fee (if applicable) added at confirmation.</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: 8 }}>Pet fee (if applicable) added at confirmation.</p>
             <a href="#inquiry" style={{ display: 'block', textAlign: 'center', marginTop: 16, padding: '13px', background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', letterSpacing: '0.08em', fontWeight: 500 }}>
               Request to Book
             </a>
