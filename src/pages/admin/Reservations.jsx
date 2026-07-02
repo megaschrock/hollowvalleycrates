@@ -387,7 +387,7 @@ export default function Reservations() {
         <p style={{ color: 'var(--color-muted)' }}>No reservations for {yearFilter}.</p>
       ) : (
         <>
-          <div className="res-table-wrap" style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+          <div className="res-table-wrap" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 220px)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
             <table style={{ borderCollapse: 'collapse', fontSize: '0.82rem', whiteSpace: 'nowrap', width: '100%' }}>
               <thead>
                 <tr>
@@ -562,7 +562,7 @@ function EditCell({ value, onSave, type = 'text', width = 130, prefix, stickyLef
     padding: '10px 14px',
     ...(stickyLeft ? {
       position: 'sticky', left: 0, zIndex: 1,
-      background: idx % 2 === 0 ? 'var(--color-bg)' : 'rgb(245,245,245)',
+      background: 'var(--color-card)',
       boxShadow: '2px 0 4px rgba(0,0,0,0.05)',
     } : {})
   }
