@@ -140,7 +140,7 @@ export default function Reservations() {
 
   async function load() {
     setLoading(true)
-    const { data: res } = await supabase.from('reservations').select('*').order('start_date', { ascending: true })
+    const { data: res } = await supabase.from('reservations').select('*').order('start_date', { ascending: false })
     setReservations(res || [])
     setLoading(false)
   }
